@@ -26,7 +26,7 @@ class RoadmapItem(BaseModel):
     actions: list[str]
 
 
-class LLMRoastOutput(BaseModel):
+class RoastOutput(BaseModel):
     roast_text: str
     strengths: list[str] = Field(min_length=3, max_length=5)
     improvement_areas: list[str] = Field(min_length=3, max_length=5)

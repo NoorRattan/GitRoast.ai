@@ -13,14 +13,13 @@ from app.dependencies import (
     cache_client_dependency,
     db_session_dependency,
     github_client_dependency,
-    llm_client_dependency,
     rate_limiters_dependency,
 )
 from app.models.api import AuditRequest
 from app.services import cache
 from app.services.github_client import GitHubClientError, GitHubGraphQLClient
-from app.services.llm_client import AnthropicRoastClient, LLMClientError, repo_evidence_from_profile
 from app.services.rate_limit import RateLimiterRegistry
+from app.services.roast_engine import generate_roast, should_queue_for_review
 from app.services.scoring import score_profile
 from app.services.scoring_constants import SCHEMA_VERSION
 
@@ -37,7 +36,6 @@ async def post_audit(
     db: AsyncSession = Depends(db_session_dependency),
     cache_client=Depends(cache_client_dependency),
     github_client: GitHubGraphQLClient = Depends(github_client_dependency),
-    llm_client: AnthropicRoastClient = Depends(llm_client_dependency),
     rate_limiters: RateLimiterRegistry = Depends(rate_limiters_dependency),
 ) -> dict[str, Any]:
     await rate_limiters.check("post_audit", request)
@@ -68,23 +66,19 @@ async def post_audit(
     roast_entry = await cache.get_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION)
 
     if roast_entry is None:
-        try:
-            roast_entry = await llm_client.generate_roast(
-                username=username,
-                scores=scores_entry["scores"],
-                flags=scores_entry["flags"],
-                findings=scores_entry["findings"],
-                roast_intensity_applied=intensity_applied,
-                repo_evidence=repo_evidence_from_profile(profile or {"repos": []}),
-            )
-        except LLMClientError as exc:
-            raise APIError(503, "llm_unavailable", "Roast generation is temporarily unavailable.") from exc
+        roast_entry = generate_roast(
+            findings=scores_entry["findings"],
+            scores=scores_entry["scores"],
+            intensity_applied=intensity_applied,
+        )
         await cache.set_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION, roast_entry)
-        if audit_row is None:
-            audit_row = await _latest_audit(db, username)
-        if audit_row is None:
-            audit_row = await _insert_audit(db, username, scores_entry["scores"])
-        await _insert_review_queue(db, audit_row.id, roast_entry)
+        # Review queue now flags thin deterministic assemblies for line-bank editing, not every generation.
+        if should_queue_for_review(scores_entry["findings"]):
+            if audit_row is None:
+                audit_row = await _latest_audit(db, username)
+            if audit_row is None:
+                audit_row = await _insert_audit(db, username, scores_entry["scores"])
+            await _insert_review_queue(db, audit_row.id, roast_entry)
 
     return _audit_response(
         username=username,
@@ -185,6 +179,7 @@ def _audit_response(
     return {
         "username": username,
         "generated_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "schema_version": SCHEMA_VERSION,
         "cache_hit": cache_hit,
         "roast_intensity_requested": requested,
         "roast_intensity_applied": applied,

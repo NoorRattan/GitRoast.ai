@@ -11,7 +11,6 @@ from app.db.session import close_db, init_db
 from app.routers import admin, audit, card_data, health, opt_out
 from app.services.cache import create_upstash_client
 from app.services.github_client import GitHubGraphQLClient
-from app.services.llm_client import AnthropicRoastClient
 from app.services.rate_limit import create_rate_limiters
 
 
@@ -21,7 +20,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     http_client = httpx.AsyncClient(timeout=20)
     app.state.http_client = http_client
     app.state.github_client = GitHubGraphQLClient(settings.github_pat, http_client)
-    app.state.llm_client = AnthropicRoastClient(settings.anthropic_api_key, http_client)
     app.state.cache_client = create_upstash_client(settings.upstash_url, settings.upstash_token)
     app.state.rate_limiters = create_rate_limiters(settings.upstash_url, settings.upstash_token)
     app.state.session_factory = init_db(settings)

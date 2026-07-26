@@ -5,7 +5,6 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings, get_settings
 from app.services.github_client import GitHubGraphQLClient
-from app.services.llm_client import AnthropicRoastClient
 from app.services.rate_limit import RateLimiterRegistry
 
 
@@ -19,10 +18,6 @@ def cache_client_dependency(request: Request):
 
 def github_client_dependency(request: Request) -> GitHubGraphQLClient:
     return request.app.state.github_client
-
-
-def llm_client_dependency(request: Request) -> AnthropicRoastClient:
-    return request.app.state.llm_client
 
 
 def rate_limiters_dependency(request: Request) -> RateLimiterRegistry:

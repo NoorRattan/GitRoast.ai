@@ -1,5 +1,10 @@
 .env
 .venv/
+node_modules/
+.next/
+out/
+tsconfig.tsbuildinfo
+next-dev.*.log
 __pycache__/
 .pytest_cache/
 *.pyc

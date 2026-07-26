@@ -14,7 +14,6 @@ from app.dependencies import (
     cache_client_dependency,
     db_session_dependency,
     github_client_dependency,
-    llm_client_dependency,
     rate_limiters_dependency,
 )
 from app.services.cache import get_audit_roast, set_audit_roast, set_audit_scores
@@ -58,18 +57,6 @@ class StubGitHubClient:
         return self.profile
 
 
-class StubLLMClient:
-    def __init__(self, text="fresh roast"):
-        self.calls = 0
-        self.last_kwargs = None
-        self.text = text
-
-    async def generate_roast(self, **kwargs):
-        self.calls += 1
-        self.last_kwargs = kwargs
-        return roast_payload(self.text)
-
-
 def roast_payload(text="cached roast"):
     return {
         "roast_text": text,
@@ -99,7 +86,6 @@ def route_harness(required_env, load_github_fixture):
 
     redis = MemoryRedis()
     github = StubGitHubClient(parse_profile_response(load_github_fixture("small_profile.json")))
-    llm = StubLLMClient()
     limiters = RateLimiterRegistry(
         {
             "post_audit": InMemoryFixedWindowLimiter(100, 3600),
@@ -118,7 +104,6 @@ def route_harness(required_env, load_github_fixture):
     app.dependency_overrides[db_session_dependency] = db_override
     app.dependency_overrides[cache_client_dependency] = lambda: redis
     app.dependency_overrides[github_client_dependency] = lambda: github
-    app.dependency_overrides[llm_client_dependency] = lambda: llm
     app.dependency_overrides[rate_limiters_dependency] = lambda: limiters
 
     with TestClient(app) as client:
@@ -129,7 +114,6 @@ def route_harness(required_env, load_github_fixture):
             "client": client,
             "redis": redis,
             "github": github,
-            "llm": llm,
             "session_factory": session_factory,
             "limiters": limiters,
             "app": client.app,
@@ -155,35 +139,49 @@ def test_audit_scores_cache_hit_skips_github(route_harness, load_github_fixture)
 
     assert response.status_code == 200
     assert h["github"].calls == 0
-    assert h["llm"].calls == 1
+    assert response.json()["roast_text"]
 
 
-def test_roast_cache_hit_skips_claude_and_github(route_harness, load_github_fixture):
+def test_roast_cache_hit_skips_regeneration_and_github(route_harness, load_github_fixture, monkeypatch):
     h = route_harness
     scores = score_fixture(load_github_fixture, "small_profile.json")
     run(set_audit_scores(h["redis"], "cleanbuilder", SCHEMA_VERSION, scores))
     run(set_audit_roast(h["redis"], "cleanbuilder", "mild", SCHEMA_VERSION, roast_payload("cached mild")))
+    calls = {"count": 0}
+
+    def fail_if_called(*args, **kwargs):
+        calls["count"] += 1
+        raise AssertionError("roast engine should not run on audit_roast cache hit")
+
+    monkeypatch.setattr("app.routers.audit.generate_roast", fail_if_called)
 
     response = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "mild"})
 
     assert response.status_code == 200
     assert response.json()["roast_text"] == "cached mild"
     assert h["github"].calls == 0
-    assert h["llm"].calls == 0
+    assert calls["count"] == 0
 
 
-def test_scores_hit_with_different_roast_intensity_calls_claude_not_github(route_harness, load_github_fixture):
+def test_scores_hit_with_different_roast_intensity_generates_not_github(route_harness, load_github_fixture, monkeypatch):
     h = route_harness
     scores = score_fixture(load_github_fixture, "small_profile.json")
     run(set_audit_scores(h["redis"], "cleanbuilder", SCHEMA_VERSION, scores))
     run(set_audit_roast(h["redis"], "cleanbuilder", "mild", SCHEMA_VERSION, roast_payload("cached mild")))
+    calls = {"count": 0}
+
+    def spy_generate_roast(*args, **kwargs):
+        calls["count"] += 1
+        return roast_payload("fresh hell")
+
+    monkeypatch.setattr("app.routers.audit.generate_roast", spy_generate_roast)
 
     response = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "hell"})
 
     assert response.status_code == 200
     assert response.json()["roast_intensity_applied"] == "hell"
     assert h["github"].calls == 0
-    assert h["llm"].calls == 1
+    assert calls["count"] == 1
 
 
 def test_beginner_downgrade_uses_medium_cache_and_skips_github(route_harness, load_github_fixture):
@@ -200,7 +198,6 @@ def test_beginner_downgrade_uses_medium_cache_and_skips_github(route_harness, lo
     assert body["roast_intensity_applied"] == "medium"
     assert body["intensity_downgraded"] is True
     assert h["github"].calls == 0
-    assert h["llm"].calls == 0
 
 
 def test_stale_scores_hit_schedules_one_refresh(route_harness, load_github_fixture):
@@ -216,7 +213,7 @@ def test_stale_scores_hit_schedules_one_refresh(route_harness, load_github_fixtu
     assert h["app"].state.refresh_scheduled_count == 1
 
 
-def test_cache_down_fails_open_to_github_and_claude(route_harness):
+def test_cache_down_fails_open_to_github_and_local_generation(route_harness):
     h = route_harness
     h["app"].dependency_overrides[cache_client_dependency] = lambda: FailingRedis()
 
@@ -224,11 +221,17 @@ def test_cache_down_fails_open_to_github_and_claude(route_harness):
 
     assert response.status_code == 200
     assert h["github"].calls == 1
-    assert h["llm"].calls == 1
 
 
-def test_opt_out_blocks_post_before_github_or_claude(route_harness):
+def test_opt_out_blocks_post_before_github_or_generation(route_harness, monkeypatch):
     h = route_harness
+    calls = {"count": 0}
+
+    def spy_generate_roast(*args, **kwargs):
+        calls["count"] += 1
+        return roast_payload()
+
+    monkeypatch.setattr("app.routers.audit.generate_roast", spy_generate_roast)
 
     async def seed():
         async with h["session_factory"]() as db:
@@ -241,13 +244,17 @@ def test_opt_out_blocks_post_before_github_or_claude(route_harness):
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "opted_out"
     assert h["github"].calls == 0
-    assert h["llm"].calls == 0
+    assert calls["count"] == 0
 
 
-def test_fresh_generation_writes_one_review_queue_row_and_cache_hit_writes_zero(route_harness):
+def test_thin_finding_generation_writes_one_review_queue_row_and_cache_hit_writes_zero(route_harness, load_github_fixture):
     h = route_harness
-    first = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "mild"})
-    second = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "mild"})
+    thin_scores = score_fixture(load_github_fixture, "small_profile.json")
+    thin_scores["findings"] = thin_scores["findings"][:2]
+    run(set_audit_scores(h["redis"], "thinuser", SCHEMA_VERSION, thin_scores))
+
+    first = h["client"].post("/api/v1/audit", json={"username": "thinuser", "roast_intensity": "mild"})
+    second = h["client"].post("/api/v1/audit", json={"username": "thinuser", "roast_intensity": "mild"})
 
     async def count_reviews():
         async with h["session_factory"]() as db:
@@ -255,8 +262,19 @@ def test_fresh_generation_writes_one_review_queue_row_and_cache_hit_writes_zero(
 
     assert first.status_code == 200
     assert second.status_code == 200
-    assert h["llm"].calls == 1
     assert run(count_reviews()) == 1
+
+
+def test_full_finding_generation_does_not_queue_review_by_default(route_harness):
+    h = route_harness
+    response = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "mild"})
+
+    async def count_reviews():
+        async with h["session_factory"]() as db:
+            return await db.scalar(select(func.count()).select_from(ReviewQueueItem))
+
+    assert response.status_code == 200
+    assert run(count_reviews()) == 0
 
 
 def test_get_audit_blends_never_audited_and_opted_out_404(route_harness):
@@ -286,6 +304,7 @@ def test_card_data_reads_scores_only(route_harness, load_github_fixture):
     assert response.status_code == 200
     assert response.json() == {
         "username": "cleanbuilder",
+        "schema_version": SCHEMA_VERSION,
         "percentile_benchmark": scores["scores"]["percentile_benchmark"],
         "scores": scores["scores"],
         "avatar_url": scores["avatar_url"],

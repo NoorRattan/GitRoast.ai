@@ -1,0 +1,37 @@
+{
+  "name": "gitroast-ai-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "lint": "next lint",
+    "test:frontend": "vitest run",
+    "bundle:check": "node scripts/check-bundle-size.mjs"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "1.6.5",
+    "@react-three/fiber": "8.17.10",
+    "@tanstack/react-query": "^5.90.11",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.181.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.1",
+    "@types/node": "^24.10.1",
+    "@types/react": "^18.3.27",
+    "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.181.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "jsdom": "^27.2.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14"
+  }
+}

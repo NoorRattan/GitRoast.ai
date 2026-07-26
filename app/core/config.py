@@ -6,7 +6,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     github_pat: str = Field(alias="GITHUB_PAT")
-    anthropic_api_key: str = Field(alias="ANTHROPIC_API_KEY")
     upstash_url: str = Field(alias="UPSTASH_URL")
     upstash_token: str = Field(alias="UPSTASH_TOKEN")
     neon_database_url: str = Field(alias="NEON_DATABASE_URL")
@@ -23,7 +22,6 @@ class Settings(BaseSettings):
 
     @field_validator(
         "github_pat",
-        "anthropic_api_key",
         "upstash_url",
         "upstash_token",
         "neon_database_url",

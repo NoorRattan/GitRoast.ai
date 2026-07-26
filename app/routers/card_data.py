@@ -31,6 +31,7 @@ async def get_card_data(
         raise APIError(404, "not_found", "Audit not found.")
     return {
         "username": username,
+        "schema_version": SCHEMA_VERSION,
         "percentile_benchmark": scores_entry["scores"]["percentile_benchmark"],
         "scores": scores_entry["scores"],
         "avatar_url": scores_entry.get("avatar_url"),

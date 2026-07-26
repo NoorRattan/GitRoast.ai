@@ -19,7 +19,6 @@ def load_github_fixture():
 def required_env(monkeypatch):
     values = {
         "GITHUB_PAT": "ghp_test",
-        "ANTHROPIC_API_KEY": "anthropic_test",
         "UPSTASH_URL": "https://example.upstash.io",
         "UPSTASH_TOKEN": "upstash_test",
         "NEON_DATABASE_URL": "sqlite+aiosqlite:///:memory:",
