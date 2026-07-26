@@ -29,3 +29,20 @@ jobs:
       - run: npm run test:frontend
       - run: npm run build
       - run: npm run bundle:check
+
+  card-worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: workers/card
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: workers/card/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npx wrangler deploy --dry-run --outdir dist --env preview

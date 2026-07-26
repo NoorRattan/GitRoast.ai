@@ -1,0 +1,24 @@
+{
+  "name": "gitroast-card-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "deploy:preview": "wrangler deploy --env preview"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2",
+    "react": "18.3.1",
+    "satori": "0.18.3"
+  },
+  "devDependencies": {
+    "@fontsource/inter": "5.2.8",
+    "@types/node": "^24.10.1",
+    "@types/react": "^18.3.27",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.14",
+    "wrangler": "^4.55.0"
+  }
+}

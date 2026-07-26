@@ -1,0 +1,23 @@
+name = "gitroast-card"
+main = "src/index.ts"
+compatibility_date = "2026-07-26"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+BACKEND_BASE_URL = "https://gitroast-api.example.com/api/v1"
+
+[[rules]]
+type = "Data"
+globs = ["**/*.woff"]
+fallthrough = true
+
+[[rules]]
+type = "CompiledWasm"
+globs = ["**/*.wasm"]
+fallthrough = true
+
+[env.preview]
+name = "gitroast-card-preview"
+
+[env.preview.vars]
+BACKEND_BASE_URL = "https://gitroast-api.example.com/api/v1"

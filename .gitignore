@@ -3,6 +3,7 @@
 node_modules/
 .next/
 out/
+dist/
 tsconfig.tsbuildinfo
 next-dev.*.log
 __pycache__/
