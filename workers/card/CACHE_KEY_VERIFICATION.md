@@ -68,4 +68,20 @@ The preview environment still uses the placeholder `BACKEND_BASE_URL`, so this w
 
 ## Custom-domain caveat
 
-This confirms the cache-key mechanism on workers.dev only. It does not yet confirm behavior on the future custom domain; File 06 already flags that workers.dev and custom-domain behavior can differ. Re-run the same `curl -I` checks after custom-domain routing is attached.
+This confirms the cache-key mechanism on workers.dev only. It does not yet confirm behavior on the future custom domain; File 06 already flags that workers.dev and custom-domain behavior can differ.
+
+Session 6 attempted to attach `card.gitroast.ai` by adding this production route:
+
+```toml
+[[routes]]
+pattern = "card.gitroast.ai"
+custom_domain = true
+```
+
+The production bundle upload succeeded with version `179cb6d8-fdd8-47d6-9efe-29edd4c35b45`, but route creation failed:
+
+```text
+Could not find zone for `card.gitroast.ai`. Make sure the domain is set up to be proxied by Cloudflare.
+```
+
+Custom-domain cache-key parity remains blocked until the authenticated Cloudflare account has an active, proxied `gitroast.ai` zone. After that, re-run the same `curl -I` checks against `https://card.gitroast.ai/card/<username>.png?v=1` and `?v=2`.

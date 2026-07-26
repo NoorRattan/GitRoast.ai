@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:cloudflare": "opennextjs-cloudflare build",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:direct": "wrangler deploy .open-next/worker.js --assets .open-next/assets --name gitroast-ai-frontend --compatibility-date 2026-07-26 --compatibility-flags nodejs_compat --domain gitroast.ai --autoconfig=false",
     "lint": "next lint",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "test:frontend": "vitest run",
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },
@@ -32,6 +36,7 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "jsdom": "^27.2.0",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.14",
+    "wrangler": "^4.114.0"
   }
 }

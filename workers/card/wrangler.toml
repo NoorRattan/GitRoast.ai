@@ -7,7 +7,11 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 [vars]
-BACKEND_BASE_URL = "https://gitroast-api.example.com/api/v1"
+BACKEND_BASE_URL = "https://gitroast-api.onrender.com/api/v1"
+
+[[routes]]
+pattern = "card.gitroast.ai"
+custom_domain = true
 
 [[rules]]
 type = "Data"
@@ -21,6 +25,7 @@ fallthrough = true
 
 [env.preview]
 name = "gitroast-card-preview"
+routes = []
 
 [env.preview.vars]
-BACKEND_BASE_URL = "https://gitroast-api.example.com/api/v1"
+BACKEND_BASE_URL = "https://gitroast-api.onrender.com/api/v1"

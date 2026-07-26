@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: gitroast-api
+    runtime: python
+    repo: https://github.com/NoorRattan/GitRoast.ai.git
+    branch: main
+    plan: free
+    buildCommand: pip install -e .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: GITHUB_PAT
+        sync: false
+      - key: UPSTASH_URL
+        sync: false
+      - key: UPSTASH_TOKEN
+        sync: false
+      - key: NEON_DATABASE_URL
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://gitroast.ai

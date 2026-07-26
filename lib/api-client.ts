@@ -58,7 +58,7 @@ export type AdminCredentials = {
   password: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-api.onrender.com/api/v1";
 const CARD_BASE_URL = "https://card.gitroast.ai/card";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };

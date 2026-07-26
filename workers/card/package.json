@@ -6,7 +6,7 @@
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "deploy:preview": "wrangler deploy --env preview"
+    "deploy:preview": "wrangler deploy --config wrangler.toml --env preview"
   },
   "dependencies": {
     "@resvg/resvg-wasm": "2.6.2",

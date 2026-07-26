@@ -1,7 +1,10 @@
 .env
+.dev.vars
 .venv/
 node_modules/
 .next/
+.open-next/
+.wrangler/
 out/
 dist/
 tsconfig.tsbuildinfo
