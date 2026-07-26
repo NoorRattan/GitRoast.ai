@@ -3,6 +3,9 @@ main = "src/index.ts"
 compatibility_date = "2026-07-26"
 compatibility_flags = ["nodejs_compat"]
 
+[cache]
+enabled = true
+
 [vars]
 BACKEND_BASE_URL = "https://gitroast-api.example.com/api/v1"
 
