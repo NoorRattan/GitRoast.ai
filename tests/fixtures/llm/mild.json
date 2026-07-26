@@ -1,0 +1,17 @@
+{
+  "content": [
+    {
+      "type": "tool_use",
+      "name": "emit_gitroast",
+      "input": {
+        "roast_text": "A polite nudge: the profile has structure, but a few repos need clearer signals.",
+        "strengths": ["Readable project mix", "Some useful CI signals", "Good language coverage"],
+        "improvement_areas": ["Tighten README details", "Keep older repos maintained", "Improve license coverage"],
+        "roadmap": [
+          { "week": 1, "focus": "Documentation", "actions": ["Refresh README examples"] },
+          { "week": 2, "focus": "Maintenance", "actions": ["Archive dead repos"] }
+        ]
+      }
+    }
+  ]
+}

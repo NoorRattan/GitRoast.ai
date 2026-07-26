@@ -1,0 +1,64 @@
+{
+  "data": {
+    "user": {
+      "login": "newstarter",
+      "createdAt": "2026-05-01T00:00:00Z",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/2?v=4",
+      "external_pr_count": 0,
+      "pullRequests": { "totalCount": 0 },
+      "repositories": {
+        "nodes": [
+          {
+            "name": "first-app",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 40,
+            "pushedAt": "2026-07-20T12:00:00Z",
+            "stargazerCount": 0,
+            "isPinned": true,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "# First App",
+            "languages": { "edges": [{ "size": 3000, "node": { "name": "HTML" } }] },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 4,
+                  "nodes": [
+                    { "committedDate": "2026-07-20T10:00:00Z", "messageHeadline": "fix" },
+                    { "committedDate": "2026-07-19T10:00:00Z", "messageHeadline": "wip" }
+                  ]
+                }
+              }
+            },
+            "rootTree": { "entries": [{ "name": "README.md", "type": "blob" }] }
+          },
+          {
+            "name": "notes",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 20,
+            "pushedAt": "2026-06-02T12:00:00Z",
+            "stargazerCount": 0,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 1000, "node": { "name": "JavaScript" } }] },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 1,
+                  "nodes": [
+                    { "committedDate": "2026-06-02T10:00:00Z", "messageHeadline": "update" }
+                  ]
+                }
+              }
+            },
+            "rootTree": { "entries": [] }
+          }
+        ]
+      }
+    }
+  }
+}

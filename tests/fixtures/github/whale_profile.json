@@ -1,0 +1,135 @@
+{
+  "data": {
+    "user": {
+      "login": "whaledev",
+      "createdAt": "2014-03-01T00:00:00Z",
+      "avatarUrl": "https://avatars.githubusercontent.com/u/4?v=4",
+      "external_pr_count": 12,
+      "pullRequests": { "totalCount": 12 },
+      "repositories": {
+        "nodes": [
+          {
+            "name": "repo-older",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 70,
+            "pushedAt": "2024-01-01T00:00:00Z",
+            "stargazerCount": 1,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "small",
+            "languages": { "edges": [{ "size": 500, "node": { "name": "Shell" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2024-01-01T00:00:00Z", "messageHeadline": "init" }] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-newest",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 3000,
+            "pushedAt": "2026-07-25T00:00:00Z",
+            "stargazerCount": 80,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": { "key": "mit" },
+            "readme_text": "# Repo\n\n## Installation\n\n## Usage\n\n![badge](https://img.shields.io/badge/tests-passing-green)",
+            "has_coverage_badge": true,
+            "languages": { "edges": [{ "size": 120000, "node": { "name": "TypeScript" } }, { "size": 10000, "node": { "name": "Python" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 130, "nodes": [{ "committedDate": "2026-07-25T00:00:00Z", "messageHeadline": "Ship cache split for audits" }] } } },
+            "rootTree": { "entries": [{ "name": ".github", "type": "tree" }, { "name": "tests", "type": "tree" }] }
+          },
+          {
+            "name": "repo-2",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 100,
+            "pushedAt": "2026-07-20T00:00:00Z",
+            "stargazerCount": 3,
+            "isPinned": true,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 90000, "node": { "name": "TypeScript" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2026-07-20T00:00:00Z", "messageHeadline": "fix" }] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-3",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 90,
+            "pushedAt": "2026-07-19T00:00:00Z",
+            "stargazerCount": 2,
+            "isPinned": true,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 85000, "node": { "name": "TypeScript" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2026-07-19T00:00:00Z", "messageHeadline": "wip" }] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-4",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 85,
+            "pushedAt": "2026-07-18T00:00:00Z",
+            "stargazerCount": 1,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 80000, "node": { "name": "TypeScript" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2026-07-18T00:00:00Z", "messageHeadline": "asdf" }] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-5",
+            "isFork": true,
+            "isPrivate": false,
+            "diskUsage": 500,
+            "pushedAt": "2026-07-17T00:00:00Z",
+            "stargazerCount": 0,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "languages": { "edges": [{ "size": 1000, "node": { "name": "Go" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 0, "nodes": [] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-6",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 60,
+            "pushedAt": "2026-07-16T00:00:00Z",
+            "stargazerCount": 1,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 70000, "node": { "name": "TypeScript" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2026-07-16T00:00:00Z", "messageHeadline": "update" }] } } },
+            "rootTree": { "entries": [] }
+          },
+          {
+            "name": "repo-7",
+            "isFork": false,
+            "isPrivate": false,
+            "diskUsage": 55,
+            "pushedAt": "2026-07-15T00:00:00Z",
+            "stargazerCount": 1,
+            "isPinned": false,
+            "isArchived": false,
+            "licenseInfo": null,
+            "readme_text": "",
+            "languages": { "edges": [{ "size": 65000, "node": { "name": "TypeScript" } }] },
+            "defaultBranchRef": { "target": { "history": { "totalCount": 1, "nodes": [{ "committedDate": "2026-07-15T00:00:00Z", "messageHeadline": "init" }] } } },
+            "rootTree": { "entries": [] }
+          }
+        ]
+      }
+    }
+  }
+}

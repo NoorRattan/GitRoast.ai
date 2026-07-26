@@ -1,0 +1,17 @@
+{
+  "content": [
+    {
+      "type": "tool_use",
+      "name": "emit_gitroast",
+      "input": {
+        "roast_text": "This portfolio has ambition, then immediately loses interest and leaves breadcrumbs called update.",
+        "strengths": ["There are real projects here", "The stack is not one-note", "Some repos have substance"],
+        "improvement_areas": ["Stop shipping graveyard repos", "Replace vague commit messages", "Add boring but necessary CI"],
+        "roadmap": [
+          { "week": 1, "focus": "Evidence", "actions": ["Add demos and badges"] },
+          { "week": 2, "focus": "Depth", "actions": ["Grow the best repos"] }
+        ]
+      }
+    }
+  ]
+}
