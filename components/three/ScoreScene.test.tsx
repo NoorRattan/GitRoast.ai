@@ -42,6 +42,9 @@ describe("ScoreScene", () => {
     render(<ScoreScene scores={scores} username="newstarter" schemaVersion={4} />);
 
     expect(screen.getByTestId("score-fallback")).toBeInTheDocument();
-    expect(screen.getByAltText("newstarter static audit card")).toHaveAttribute("src", "https://card.gitroast.ai/card/newstarter.png?v=4");
+    expect(screen.getByAltText("newstarter static audit card")).toHaveAttribute(
+      "src",
+      "https://gitroast-card-preview.jnoorrattan.workers.dev/card/newstarter.png?v=4"
+    );
   });
 });

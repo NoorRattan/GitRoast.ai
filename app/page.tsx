@@ -32,7 +32,17 @@ export default function HomePage(): JSX.Element {
               <label htmlFor="username" className="sr-only">
                 GitHub username
               </label>
-              <input id="username" className="input hero-input" name="username" placeholder="torvalds" autoComplete="off" pattern="[A-Za-z0-9-]+" required />
+              <input
+                id="username"
+                className="input hero-input"
+                name="username"
+                placeholder="torvalds"
+                autoComplete="off"
+                pattern="[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
+                maxLength={39}
+                title="Use a valid GitHub username."
+                required
+              />
               <button className="button primary hero-button" type="submit">Audit profile</button>
             </form>
 

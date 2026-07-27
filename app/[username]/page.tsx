@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: UsernamePageProps): Promise<M
   const { username: rawUsername } = await params;
   const username = decodeURIComponent(rawUsername);
   const audit = await safeFetchCachedAudit(username);
-  const imageUrl = audit ? buildCardImageUrl(username, audit.schemaVersion) : "https://card.gitroast.ai/card/generic.png";
+  const imageUrl = audit ? buildCardImageUrl(username, audit.schemaVersion) : "https://gitroast-card-preview.jnoorrattan.workers.dev/card/generic.png";
   return {
     title: audit ? `${username} GitRoast` : `${username} GitRoast pending`,
     description: audit ? audit.roastText.slice(0, 150) : "GitRoast audit result shell.",

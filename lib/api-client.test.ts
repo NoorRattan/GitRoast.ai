@@ -65,6 +65,6 @@ describe("api-client translation", () => {
   });
 
   it("builds versioned card URLs from backend schemaVersion", () => {
-    expect(buildCardImageUrl("Noor R", 7)).toBe("https://card.gitroast.ai/card/Noor%20R.png?v=7");
+    expect(buildCardImageUrl("Noor R", 7)).toBe("https://gitroast-card-preview.jnoorrattan.workers.dev/card/Noor%20R.png?v=7");
   });
 });
