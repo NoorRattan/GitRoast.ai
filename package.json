@@ -8,7 +8,7 @@
     "build": "next build",
     "build:cloudflare": "opennextjs-cloudflare build",
     "deploy": "npm run build:cloudflare && npm run deploy:direct",
-    "deploy:direct": "wrangler deploy .open-next/worker.js --assets .open-next/assets --name gitroast-ai-frontend --compatibility-date 2026-07-26 --compatibility-flags nodejs_compat --domain gitroast.ai --autoconfig=false",
+    "deploy:direct": "wrangler deploy .open-next/worker.js --assets .open-next/assets --name gitroast-ai-frontend --compatibility-date 2026-07-26 --compatibility-flags nodejs_compat --autoconfig=false --keep-vars",
     "lint": "next lint",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "test:frontend": "vitest run",

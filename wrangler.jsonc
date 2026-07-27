@@ -8,13 +8,8 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  "workers_dev": true,
   "observability": {
     "enabled": true
-  },
-  "routes": [
-    {
-      "pattern": "gitroast.ai",
-      "custom_domain": true
-    }
-  ]
+  }
 }

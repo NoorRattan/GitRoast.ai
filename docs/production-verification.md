@@ -7,7 +7,7 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 | Service | Target | Status |
 |---|---|---|
 | Backend | `https://gitroast-api.onrender.com` | Not deployed. `GET /health` returns Render routing `404` with `x-render-routing: no-server`. |
-| Frontend | `https://gitroast.ai` | Not live. OpenNext Worker artifact upload succeeded, but custom-domain route creation failed because Wrangler could not find a Cloudflare zone for `gitroast.ai`. |
+| Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Dashboard build/deploy retry reached OpenNext build and Worker asset upload. Custom domain remains blocked until the `gitroast.ai` zone exists in this Cloudflare account. |
 | Card Worker | `https://card.gitroast.ai` | Not live. Cloudflare upload succeeded, but custom-domain route creation failed because Wrangler could not find a Cloudflare zone for `card.gitroast.ai`. |
 | Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live from Session 5 follow-up. Cache-key behavior verified on workers.dev only. |
 
@@ -19,13 +19,14 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 - Declared required backend env vars from `app/core/config.py`: `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ALLOWED_ORIGINS`.
 - Confirmed `ANTHROPIC_API_KEY` is not present in `Settings`.
 - Set `ALLOWED_ORIGINS` to the intended production frontend origin, `https://gitroast.ai`; no wildcard is used.
-- Added root `wrangler.jsonc` for the OpenNext frontend Worker on `gitroast.ai`.
+- Added root `wrangler.jsonc` for the OpenNext frontend Worker on workers.dev.
 - Added frontend Cloudflare scripts: `build:cloudflare`, `deploy`, and `preview`.
 - Pointed the frontend default API base URL at `https://gitroast-api.onrender.com/api/v1`; local development can still override it with `NEXT_PUBLIC_API_BASE_URL`.
 - Pointed the card Worker's `BACKEND_BASE_URL` at `https://gitroast-api.onrender.com/api/v1`.
 - Added the card Worker custom-domain route for `card.gitroast.ai`; the route is configured in repo but not live until the `gitroast.ai` Cloudflare zone exists in this account and a production deploy succeeds.
 - Attempted production card Worker deploy. Bundle upload succeeded with version `179cb6d8-fdd8-47d6-9efe-29edd4c35b45`, then route attachment failed: `Could not find zone for card.gitroast.ai. Make sure the domain is set up to be proxied by Cloudflare.`
-- Attempted production frontend Worker deploy by deploying the generated `.open-next/worker.js` artifact directly. Bundle upload succeeded with version `7afefe64-713c-45fc-b26f-d399e668e834`, then route attachment failed: `Could not find zone for gitroast.ai. Make sure the domain is set up to be proxied by Cloudflare.`
+- Retried the Cloudflare dashboard frontend build after correcting its commands. The build used `npm run build:cloudflare`, produced `.open-next/worker.js`, uploaded the Worker assets, and only failed when the old deploy command tried to attach `--domain gitroast.ai`.
+- Updated the frontend dashboard deploy command and repo script to deploy the generated `.open-next/worker.js` artifact directly without a custom-domain flag. The custom domain must be attached later after the `gitroast.ai` zone exists in this Cloudflare account.
 
 ## Confirmed platform limits
 
@@ -52,7 +53,7 @@ On this native Windows machine, the `opennextjs-cloudflare deploy` wrapper also 
 
 `ERR_UNSUPPORTED_ESM_URL_SCHEME: On Windows, absolute paths must be valid file:// URLs. Received protocol 'n:'`
 
-The generated artifact uploads when bypassing OpenNext autodetection:
+The generated artifact uploads when bypassing OpenNext autodetection. The direct deploy intentionally omits `--domain gitroast.ai` until that zone is available in this Cloudflare account:
 
 ```powershell
 npm run deploy:direct
