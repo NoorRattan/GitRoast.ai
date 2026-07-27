@@ -24,7 +24,7 @@ def required_env(monkeypatch):
         "NEON_DATABASE_URL": "sqlite+aiosqlite:///:memory:",
         "ADMIN_USERNAME": "admin",
         "ADMIN_PASSWORD": "password",
-        "ALLOWED_ORIGINS": "http://localhost:3000,https://gitroast.ai",
+        "ALLOWED_ORIGINS": "http://localhost:3000,https://gitroast-ai-frontend.jnoorrattan.workers.dev",
     }
     for key, value in values.items():
         monkeypatch.setenv(key, value)

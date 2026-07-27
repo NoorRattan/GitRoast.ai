@@ -14,4 +14,4 @@ def test_settings_requires_every_secret(required_env, monkeypatch):
 def test_settings_parses_allowed_origins(required_env):
     settings = Settings(_env_file=None)
 
-    assert settings.allowed_origin_list == ["http://localhost:3000", "https://gitroast.ai"]
+    assert settings.allowed_origin_list == ["http://localhost:3000", "https://gitroast-ai-frontend.jnoorrattan.workers.dev"]

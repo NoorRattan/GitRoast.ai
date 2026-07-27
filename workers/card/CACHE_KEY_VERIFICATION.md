@@ -35,7 +35,7 @@ Deployed URL:
 
 Version ID:
 
-`27eda17d-833f-4d81-b29b-73d1424aa86f`
+`45c6b7d2-c070-4657-bcdb-4ea7e1134881`
 
 Probe commands:
 
@@ -64,24 +64,12 @@ Cache-Control: public, max-age=21600, stale-while-revalidate=3600
 
 The first request to each URL returned `CF-Cache-Status: MISS`, and repeated requests to both versioned URLs independently reached `HIT`. This confirms `?v=1` and `?v=2` are separate cache entries on workers.dev.
 
-The preview environment still uses the placeholder `BACKEND_BASE_URL`, so this workers.dev probe validated the fallback PNG response path. Successful rendered card responses use the same `Content-Type` and `Cache-Control` headers.
+The preview environment now uses `https://gitroast-ai.onrender.com/api/v1` as `BACKEND_BASE_URL`, so the workers.dev endpoint can render cards from the live backend when card data is available. Fallback PNG responses and rendered card responses use the same `Content-Type` and `Cache-Control` headers.
 
-## Custom-domain caveat
+## Custom-domain status
 
-This confirms the cache-key mechanism on workers.dev only. It does not yet confirm behavior on the future custom domain; File 06 already flags that workers.dev and custom-domain behavior can differ.
+No card custom domain is configured in this repo. The public, verified card endpoint is the workers.dev preview Worker:
 
-Session 6 attempted to attach `card.gitroast.ai` by adding this production route:
+`https://gitroast-card-preview.jnoorrattan.workers.dev`
 
-```toml
-[[routes]]
-pattern = "card.gitroast.ai"
-custom_domain = true
-```
-
-The production bundle upload succeeded with version `179cb6d8-fdd8-47d6-9efe-29edd4c35b45`, but route creation failed:
-
-```text
-Could not find zone for `card.gitroast.ai`. Make sure the domain is set up to be proxied by Cloudflare.
-```
-
-Custom-domain cache-key parity remains blocked until the authenticated Cloudflare account has an active, proxied `gitroast.ai` zone. After that, re-run the same `curl -I` checks against `https://card.gitroast.ai/card/<username>.png?v=1` and `?v=2`.
+The cache-key mechanism has been verified on workers.dev only.

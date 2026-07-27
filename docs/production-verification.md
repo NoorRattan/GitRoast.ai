@@ -1,46 +1,27 @@
 # Production Verification
 
-Session 6 is the live-deploy close-out pass. This file records what was actually verified and what is blocked by missing dashboard access or production secrets.
+This file records the current public deployment targets for the repo. Stale custom-domain targets have been removed; the frontend is intentionally deployed on workers.dev.
 
-## Current production targets
+## Current Production Targets
 
 | Service | Target | Status |
 |---|---|---|
-| Backend | `https://gitroast-api.onrender.com` | Not deployed. `GET /health` returns Render routing `404` with `x-render-routing: no-server`. |
-| Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Live on workers.dev. `curl -I` returns `200 OK` and rendered HTML contains `GitRoast.ai`. Custom domain remains blocked until the `gitroast.ai` zone exists in this Cloudflare account. |
-| Card Worker | `https://card.gitroast.ai` | Not live. Cloudflare upload succeeded, but custom-domain route creation failed because Wrangler could not find a Cloudflare zone for `card.gitroast.ai`. |
-| Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live from Session 5 follow-up. Cache-key behavior verified on workers.dev only. |
+| Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Live on Cloudflare Workers. |
+| Backend | `https://gitroast-ai.onrender.com` | Live on Render. `GET /health` returns `{"status":"ok"}`. |
+| Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live on workers.dev. Cache-key behavior has been verified with versioned `?v=` URLs. |
 
-## Repo-side production configuration completed
+## Repo-Side Production Configuration
 
-- Added `render.yaml` for the Render backend service.
-- Pinned Python with `.python-version` and `PYTHON_VERSION=3.12.10`.
-- Set Render health check path to `/health`.
-- Declared required backend env vars from `app/core/config.py`: `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ALLOWED_ORIGINS`.
-- Confirmed `ANTHROPIC_API_KEY` is not present in `Settings`.
-- Set `ALLOWED_ORIGINS` to the intended production frontend origin, `https://gitroast.ai`; no wildcard is used.
-- Added root `wrangler.jsonc` for the OpenNext frontend Worker on workers.dev.
-- Added frontend Cloudflare scripts: `build:cloudflare`, `deploy`, and `preview`.
-- Pointed the frontend default API base URL at `https://gitroast-api.onrender.com/api/v1`; local development can still override it with `NEXT_PUBLIC_API_BASE_URL`.
-- Pointed the card Worker's `BACKEND_BASE_URL` at `https://gitroast-api.onrender.com/api/v1`.
-- Added the card Worker custom-domain route for `card.gitroast.ai`; the route is configured in repo but not live until the `gitroast.ai` Cloudflare zone exists in this account and a production deploy succeeds.
-- Attempted production card Worker deploy. Bundle upload succeeded with version `179cb6d8-fdd8-47d6-9efe-29edd4c35b45`, then route attachment failed: `Could not find zone for card.gitroast.ai. Make sure the domain is set up to be proxied by Cloudflare.`
-- Retried the Cloudflare dashboard frontend build after correcting its commands. The build used `npm run build:cloudflare`, produced `.open-next/worker.js`, uploaded the Worker assets, and only failed when the old deploy command tried to attach `--domain gitroast.ai`.
-- Updated the frontend dashboard deploy command and repo script to deploy the generated `.open-next/worker.js` artifact directly without a custom-domain flag. The custom domain must be attached later after the `gitroast.ai` zone exists in this Cloudflare account.
-- Added a post-build OpenNext Worker patch for the generated `process.chdir("")` call that produced a Worker runtime `500`. Local `wrangler dev` then logged `GET / 200 OK`.
-- Deployed the patched frontend Worker to workers.dev. Wrangler reported version `b347c418-5228-468b-bde1-1c40bb254471`, `Total Upload: 3127.03 KiB / gzip: 678.04 KiB`, and `Worker Startup Time: 26 ms`.
-- Verified the Cloudflare dashboard path in Chrome. A dashboard retry using bare `wrangler deploy ...` failed with `/bin/sh: 1: wrangler: not found`, so the dashboard deploy command was corrected to `npm run deploy:direct`.
-- Retried the dashboard build after that correction. Build `52959c91-d60d-47d0-bd0e-a097ad5e1d32` completed successfully, deployed `https://gitroast-ai-frontend.jnoorrattan.workers.dev`, and reported version `bb9fea27-647c-40b8-a608-8e822fed7b4a`, `Total Upload: 3122.55 KiB / gzip: 676.14 KiB`, and `Worker Startup Time: 24 ms`.
+- Root `wrangler.jsonc` deploys the OpenNext frontend Worker to workers.dev with `workers_dev: true`.
+- Frontend deploy command: `npm run deploy`, which runs `npm run build:cloudflare` and `npm run deploy:direct`.
+- Direct frontend deploy command: `npm run deploy:direct`.
+- The frontend same-origin API proxy calls `https://gitroast-ai.onrender.com/api/v1`.
+- `render.yaml` defines the Render backend service and keeps secret values out of source with `sync: false`.
+- Backend required env vars are `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ALLOWED_ORIGINS`.
+- `ALLOWED_ORIGINS` is scoped to the live Workers.dev frontend origin.
+- The card Worker preview uses `https://gitroast-ai.onrender.com/api/v1` as its backend base URL.
 
-## Confirmed platform limits
-
-- Render HTTP health checks must return `2xx` or `3xx` within 5 seconds.
-- Render documentation currently states web services can take HTTP responses up to 100 minutes.
-- Cloudflare Workers Free plan Worker-size limit is 3 MB after gzip compression.
-- The card Worker dry-run remains under that limit: `Total Upload: 3360.82 KiB / gzip: 1190.83 KiB`.
-- The OpenNext frontend Worker dry-run is also under that limit: `Total Upload: 3124.95 KiB / gzip: 677.44 KiB`.
-
-## Frontend deploy command note
+## Cloudflare Build Notes
 
 Cloudflare dashboard settings for the frontend Worker:
 
@@ -55,55 +36,32 @@ Do not use `npx wrangler deploy` as the Cloudflare deploy command for this repo.
 
 Do not use bare `wrangler deploy ...` as the Cloudflare dashboard deploy command. Cloudflare's build shell did not expose bare `wrangler` on PATH; `npm run deploy:direct` works because npm exposes `node_modules/.bin/wrangler`.
 
-On this native Windows machine, the `opennextjs-cloudflare deploy` wrapper also fails before upload with:
+On native Windows, the `opennextjs-cloudflare deploy` wrapper can fail before upload with:
 
 `ERR_UNSUPPORTED_ESM_URL_SCHEME: On Windows, absolute paths must be valid file:// URLs. Received protocol 'n:'`
 
-The generated artifact uploads when bypassing OpenNext autodetection. The direct deploy intentionally omits `--domain gitroast.ai` until that zone is available in this Cloudflare account:
+The generated artifact uploads when bypassing OpenNext autodetection:
 
 ```powershell
 npm run deploy:direct
 ```
 
-`npm run deploy` is now a convenience wrapper for `npm run build:cloudflare && npm run deploy:direct`.
-
 `npm run build:cloudflare` also runs `scripts/patch-opennext-worker.mjs` after OpenNext builds. This keeps the generated Worker from throwing on OpenNext's empty `process.chdir("")` call in the Cloudflare runtime.
 
-## Blocked live checks
+## Confirmed Platform Limits
 
-The in-app browser reaches `https://dashboard.render.com/login`, so no authenticated Render dashboard session is available. The process environment also has none of the required production secrets or Render API values.
+- Cloudflare Workers Free plan Worker-size limit is 3 MB after gzip compression.
+- Latest frontend bundle check: `1.11 MiB gzip / 3.00 MiB`.
+- The card Worker preview deploy remains under the Cloudflare Worker gzip limit.
 
-Blocked until Render sign-in, production secret values, and the `gitroast.ai` Cloudflare zone exist in the authenticated account:
+## Smoke Checklist
 
-- Create or verify the Render `gitroast-api` web service.
-- Set production `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, and `ADMIN_PASSWORD`.
-- Confirm the Render dashboard does not contain `ANTHROPIC_API_KEY`.
-- Verify `/health` on the deployed Render service within the 5 second health-check window.
-- Measure a real cold-path `POST /api/v1/audit` latency against the deployed backend.
-- Deploy the frontend Worker to `https://gitroast.ai`.
-- Add or transfer the `gitroast.ai` zone to the authenticated Cloudflare account and make it proxied, then redeploy the frontend Worker and card Worker routes.
-- Redeploy the card Worker and attach `card.gitroast.ai`.
-- Repeat the custom-domain `?v=1` / `?v=2` cache-key test on `card.gitroast.ai`.
-- Run the full end-to-end smoke checklist against live services.
-
-## Smoke checklist to run after deploy
-
-- Search a real, small GitHub username and confirm a cold-path audit completes.
-- Revisit the same username and confirm `cache_hit: true`.
-- Search a beginner-account-shaped username and confirm `intensity_downgraded: true` displays the explanation.
-- Confirm the share card image loads on the results page and at the direct `card.gitroast.ai` URL.
-- Confirm an OG-preview checker renders a 1200x630 image.
+- Search a real GitHub profile URL and confirm it redirects to the normalized username route.
+- Confirm a cold-path audit completes.
+- Revisit the same username and confirm cached audit behavior.
+- Confirm the animated score visual renders without browser console errors.
+- Confirm the share card image loads from the workers.dev card preview URL.
 - Opt out a test username; confirm `GET /api/v1/audit/{username}` returns `404` and `POST /api/v1/audit` returns `409`.
 - Reverse the opt-out with `DELETE /api/v1/opt-out/{username}` and confirm the username can be re-audited.
-- Log into the admin panel with production credentials and approve/reject a thin-finding review.
+- Log into the admin panel directly at `/admin` with production credentials and approve/reject a thin-finding review.
 - Hit `POST /api/v1/audit` rapidly from one IP and confirm rate limiting eventually blocks, then recovers after the window.
-
-## Portfolio priorities final state
-
-1. Rate-limit/caching architecture: shipped in Sessions 1, 2, and 5; workers.dev cache-key behavior verified, live custom-domain verification blocked until `card.gitroast.ai` is attached.
-2. Tone/safety calibration: shipped; live verification blocked until backend deploy.
-3. Transparent deterministic scoring: shipped and covered by tests.
-4. Legal/trust basics: opt-out and official-API-only are shipped; visible satire disclaimer still needs live UI verification.
-5. Virality/shareable card: Worker shipped and workers.dev cache verified; production custom-domain verification blocked.
-6. Retention: intentionally deferred; no user-facing history page exists.
-7. LLM Phase 2 self-training: formally dropped because File 07 replaced external LLM generation with the local roast engine, leaving no Phase 1 LLM output stream to train on.

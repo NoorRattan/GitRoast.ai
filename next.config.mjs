@@ -6,10 +6,6 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "card.gitroast.ai"
-      },
-      {
-        protocol: "https",
         hostname: "gitroast-card-preview.jnoorrattan.workers.dev"
       }
     ]

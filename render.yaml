@@ -25,4 +25,4 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
       - key: ALLOWED_ORIGINS
-        value: https://gitroast-ai-frontend.jnoorrattan.workers.dev,https://gitroast.ai
+        value: https://gitroast-ai-frontend.jnoorrattan.workers.dev
