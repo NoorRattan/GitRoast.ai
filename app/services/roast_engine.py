@@ -55,28 +55,24 @@ def generate_roast(
     ordered_findings = list(findings)
     opener = rng.choice(dataset["openers"][intensity_applied])
     closer = rng.choice(dataset["closers"][intensity_applied])
-    finding_lines = [
+    evidence_findings = ordered_findings[:6]
+    evidence_lines = [
         _fill_template(
             rng.choice(dataset["finding_lines"][finding["metric"]][intensity_applied]),
             finding,
             scores,
         )
-        for finding in ordered_findings
+        for finding in evidence_findings
     ]
+    if len(ordered_findings) > len(evidence_findings):
+        evidence_lines.append(f"{len(ordered_findings) - len(evidence_findings)} more lower-priority signals are also dragging the audit down.")
 
-    improvement_areas = [
-        _fill_template(
-            rng.choice(dataset["finding_lines"][finding["metric"]][intensity_applied]),
-            finding,
-            scores,
-        )
-        for finding in ordered_findings[:5]
-    ]
+    improvement_areas = _improvement_areas(dataset, ordered_findings, rng)
     strengths = _strengths(dataset, ordered_findings, scores, rng)
     roadmap = _roadmap(dataset, ordered_findings, rng)
 
     return {
-        "roast_text": "\n\n".join([opener, *finding_lines, closer]),
+        "roast_text": _compose_roast_text(opener, evidence_lines, closer),
         "strengths": strengths,
         "improvement_areas": improvement_areas,
         "roadmap": roadmap,
@@ -85,6 +81,26 @@ def generate_roast(
 
 def should_queue_for_review(findings: list[dict[str, Any]]) -> bool:
     return len(findings) < 6
+
+
+def _compose_roast_text(opener: str, evidence_lines: list[str], closer: str) -> str:
+    if not evidence_lines:
+        return f"Verdict: {opener}\n\nBottom line: {closer}"
+
+    bullets = "\n".join(f"- {line}" for line in evidence_lines)
+    return f"Verdict: {opener}\n\nEvidence:\n{bullets}\n\nBottom line: {closer}"
+
+
+def _improvement_areas(dataset: dict[str, Any], findings: list[dict[str, Any]], rng: random.Random) -> list[str]:
+    improvements: list[str] = []
+    for finding in findings[:5]:
+        action = rng.choice(dataset["roadmap_actions"][finding["metric"]])
+        candidate = f"{_label(finding['metric']).capitalize()}: {action}"
+        if candidate not in improvements:
+            improvements.append(candidate)
+    if not improvements:
+        improvements.append("Project depth: Deepen the two strongest repos before starting new ones.")
+    return improvements
 
 
 def load_line_bank() -> dict[str, Any]:

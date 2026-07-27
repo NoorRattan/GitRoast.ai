@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-const sampleHandles = ["torvalds", "gaearon", "sindresorhus"];
 const scoreSignals = [
   ["Profile", "86", "Identity, bio, social proof"],
   ["Depth", "74", "Repo quality and project range"],
@@ -14,10 +13,6 @@ export default function HomePage(): JSX.Element {
       <div className="shell">
         <header className="topbar">
           <Link className="brand" href="/" aria-label="GitRoast.ai home">GitRoast.ai</Link>
-          <nav className="topbar-actions" aria-label="Primary navigation">
-            <a className="button ghost" href="https://github.com/NoorRattan/GitRoast.ai" target="_blank" rel="noreferrer">GitHub</a>
-            <Link className="button" href="/admin">Admin</Link>
-          </nav>
         </header>
 
         <section className="hero-grid" aria-labelledby="home-title">
@@ -36,7 +31,7 @@ export default function HomePage(): JSX.Element {
                 id="username"
                 className="input hero-input"
                 name="username"
-                placeholder="https://github.com/NoorRattan"
+                placeholder="https://github.com/your-handle"
                 autoComplete="off"
                 inputMode="url"
                 title="Paste a GitHub profile link, or type a GitHub username."
@@ -44,15 +39,6 @@ export default function HomePage(): JSX.Element {
               />
               <button className="button primary hero-button" type="submit">Audit profile</button>
             </form>
-
-            <div className="sample-row" aria-label="Example GitHub profiles">
-              <span className="muted">Try:</span>
-              {sampleHandles.map((handle) => (
-                <Link key={handle} className="sample-link" href={`/${handle}`}>
-                  {handle}
-                </Link>
-              ))}
-            </div>
           </div>
 
           <aside className="audit-preview" aria-label="Audit preview">

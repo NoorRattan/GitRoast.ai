@@ -49,6 +49,9 @@ def test_generate_roast_is_seed_deterministic():
     second = generate_roast(copy.deepcopy(FINDINGS), SCORES, "brutal", rng=random.Random(42))
 
     assert first == second
+    assert first["roast_text"].startswith("Verdict:")
+    assert "\nEvidence:\n- " in first["roast_text"]
+    assert "\nBottom line: " in first["roast_text"]
 
 
 def test_generate_roast_changes_with_different_seeds():
@@ -86,3 +89,16 @@ def test_roadmap_actions_trace_to_actual_finding_metrics():
         assert week["actions"]
         for action in week["actions"]:
             assert action_to_metric[action] in finding_metrics
+
+
+def test_improvement_areas_are_action_oriented():
+    dataset = load_line_bank()
+    result = generate_roast(copy.deepcopy(FINDINGS), SCORES, "medium", rng=random.Random(11))
+    actions = {
+        action
+        for actions in dataset["roadmap_actions"].values()
+        for action in actions
+    }
+
+    assert result["improvement_areas"]
+    assert all(any(action in item for action in actions) for item in result["improvement_areas"])

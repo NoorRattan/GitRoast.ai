@@ -10,7 +10,7 @@ import { RoastIntensityTabs } from "./RoastIntensityTabs";
 
 const ScoreScene = dynamic(() => import("@/components/three/ScoreScene"), {
   ssr: false,
-  loading: () => <section className="panel" style={{ height: 320, padding: 16 }}><span className="muted">Loading visual...</span></section>
+  loading: () => <section className="panel score-visual-loading"><span className="muted">Loading score field...</span></section>
 });
 
 /** Client-side audit runner used only after the server cache-read path has rendered immediately. */
@@ -26,8 +26,8 @@ export function AuditClient({ username, initialAudit }: { username: string; init
 
   return (
     <div className="grid">
-      <section className="panel" style={{ padding: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="panel audit-header">
+        <div className="audit-header-row">
           <div>
             <h1 style={{ margin: 0 }}>{username}</h1>
             <p className="muted" style={{ marginBottom: 0 }}>

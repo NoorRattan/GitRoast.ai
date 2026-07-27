@@ -205,6 +205,137 @@ textarea {
   font-size: 14px;
 }
 
+.audit-header {
+  padding: 16px;
+}
+
+.audit-header-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.score-visual-loading,
+.score-visual {
+  min-height: 340px;
+}
+
+.score-visual-loading {
+  display: grid;
+  align-items: center;
+  padding: 16px;
+}
+
+.score-visual {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 24% 34%, rgba(226, 183, 102, 0.18), transparent 30%),
+    linear-gradient(145deg, rgba(105, 197, 184, 0.08), rgba(138, 180, 248, 0.04)),
+    #111416;
+}
+
+.score-visual canvas {
+  display: block;
+  width: 100%;
+  height: 360px;
+}
+
+.score-visual-overlay {
+  position: absolute;
+  inset: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.score-visual-kicker {
+  width: fit-content;
+  border: 1px solid rgba(105, 197, 184, 0.45);
+  border-radius: 999px;
+  background: rgba(12, 13, 13, 0.72);
+  color: var(--accent-2);
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.score-visual-labels {
+  display: grid;
+  gap: 8px;
+}
+
+.score-visual-labels div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(12, 13, 13, 0.62);
+  padding: 8px 10px;
+  backdrop-filter: blur(8px);
+}
+
+.score-visual-labels span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.score-visual-labels strong {
+  font-size: 20px;
+}
+
+.roast-panel,
+.fact-panel,
+.roadmap-panel {
+  padding: 20px;
+}
+
+.roast-panel {
+  border-color: rgba(226, 183, 102, 0.38);
+  background:
+    linear-gradient(135deg, rgba(226, 183, 102, 0.08), transparent 45%),
+    var(--panel);
+}
+
+.roast-panel p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.68;
+}
+
+.fact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.fact-panel h2,
+.roadmap-panel h2 {
+  margin-top: 0;
+}
+
+.fact-panel ul,
+.roadmap-list {
+  display: grid;
+  gap: 10px;
+  padding-left: 20px;
+}
+
+.roadmap-list {
+  gap: 14px;
+}
+
+.roadmap-list ul {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+  padding-left: 20px;
+}
+
 .audit-preview {
   display: grid;
   align-content: start;

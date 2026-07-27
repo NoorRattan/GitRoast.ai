@@ -18,16 +18,16 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
           </div>
         ) : null}
         <ScoreGrid scores={audit.scores} />
-        <section className="panel" style={{ padding: 18 }}>
-          <p style={{ whiteSpace: "pre-wrap", lineHeight: 1.6, marginTop: 0 }}>{audit.roastText}</p>
+        <section className="panel roast-panel" aria-label="Roast verdict">
+          <p>{audit.roastText}</p>
         </section>
-        <section className="grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
+        <section className="grid fact-grid">
           <FactList title="Strengths" items={audit.strengths} />
           <FactList title="Next fixes" items={audit.improvementAreas} />
         </section>
-        <section className="panel" style={{ padding: 18 }}>
+        <section className="panel roadmap-panel">
           <h2>Roadmap</h2>
-          <ol style={{ display: "grid", gap: 12, paddingLeft: 20 }}>
+          <ol className="roadmap-list">
             {audit.roadmap.map((item) => (
               <li key={`${item.week}-${item.focus}`}>
                 <strong>Week {item.week}: {item.focus}</strong>
@@ -52,9 +52,9 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
 
 function FactList({ title, items }: { title: string; items: string[] }): JSX.Element {
   return (
-    <section className="panel" style={{ padding: 18 }}>
+    <section className="panel fact-panel">
       <h2>{title}</h2>
-      <ul style={{ paddingLeft: 20 }}>
+      <ul>
         {items.map((item) => <li key={item}>{item}</li>)}
       </ul>
     </section>
