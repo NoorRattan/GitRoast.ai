@@ -37,17 +37,28 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 
 ## Frontend deploy command note
 
-On this native Windows machine, `npm run deploy` successfully builds the OpenNext artifact but the `opennextjs-cloudflare deploy` wrapper fails before upload with:
+Cloudflare dashboard settings for the frontend Worker:
+
+```text
+Build command: npm run build:cloudflare
+Deploy command: npm run deploy:direct
+```
+
+Do not use `npm run build` as the Cloudflare build command. It only creates `.next`, while the Worker deploy needs `.open-next/worker.js` from `opennextjs-cloudflare build`.
+
+Do not use `npx wrangler deploy` as the Cloudflare deploy command for this repo. Wrangler detects the OpenNext project and delegates to the OpenNext deploy wrapper, which expects compiled OpenNext config and can fail with `Could not find compiled Open Next config, did you run the build command?`.
+
+On this native Windows machine, the `opennextjs-cloudflare deploy` wrapper also fails before upload with:
 
 `ERR_UNSUPPORTED_ESM_URL_SCHEME: On Windows, absolute paths must be valid file:// URLs. Received protocol 'n:'`
 
-The generated artifact did upload when bypassing OpenNext autodetection:
+The generated artifact uploads when bypassing OpenNext autodetection:
 
 ```powershell
 npm run deploy:direct
 ```
 
-For the final production deploy, use WSL for `npm run deploy` or use the direct generated-artifact Wrangler command above.
+`npm run deploy` is now a convenience wrapper for `npm run build:cloudflare && npm run deploy:direct`.
 
 ## Blocked live checks
 
