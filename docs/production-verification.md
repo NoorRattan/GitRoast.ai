@@ -29,6 +29,8 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 - Updated the frontend dashboard deploy command and repo script to deploy the generated `.open-next/worker.js` artifact directly without a custom-domain flag. The custom domain must be attached later after the `gitroast.ai` zone exists in this Cloudflare account.
 - Added a post-build OpenNext Worker patch for the generated `process.chdir("")` call that produced a Worker runtime `500`. Local `wrangler dev` then logged `GET / 200 OK`.
 - Deployed the patched frontend Worker to workers.dev. Wrangler reported version `b347c418-5228-468b-bde1-1c40bb254471`, `Total Upload: 3127.03 KiB / gzip: 678.04 KiB`, and `Worker Startup Time: 26 ms`.
+- Verified the Cloudflare dashboard path in Chrome. A dashboard retry using bare `wrangler deploy ...` failed with `/bin/sh: 1: wrangler: not found`, so the dashboard deploy command was corrected to `npm run deploy:direct`.
+- Retried the dashboard build after that correction. Build `52959c91-d60d-47d0-bd0e-a097ad5e1d32` completed successfully, deployed `https://gitroast-ai-frontend.jnoorrattan.workers.dev`, and reported version `bb9fea27-647c-40b8-a608-8e822fed7b4a`, `Total Upload: 3122.55 KiB / gzip: 676.14 KiB`, and `Worker Startup Time: 24 ms`.
 
 ## Confirmed platform limits
 
@@ -50,6 +52,8 @@ Deploy command: npm run deploy:direct
 Do not use `npm run build` as the Cloudflare build command. It only creates `.next`, while the Worker deploy needs `.open-next/worker.js` from `opennextjs-cloudflare build`.
 
 Do not use `npx wrangler deploy` as the Cloudflare deploy command for this repo. Wrangler detects the OpenNext project and delegates to the OpenNext deploy wrapper, which expects compiled OpenNext config and can fail with `Could not find compiled Open Next config, did you run the build command?`.
+
+Do not use bare `wrangler deploy ...` as the Cloudflare dashboard deploy command. Cloudflare's build shell did not expose bare `wrangler` on PATH; `npm run deploy:direct` works because npm exposes `node_modules/.bin/wrangler`.
 
 On this native Windows machine, the `opennextjs-cloudflare deploy` wrapper also fails before upload with:
 
