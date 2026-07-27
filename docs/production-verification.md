@@ -7,7 +7,7 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 | Service | Target | Status |
 |---|---|---|
 | Backend | `https://gitroast-api.onrender.com` | Not deployed. `GET /health` returns Render routing `404` with `x-render-routing: no-server`. |
-| Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Dashboard build/deploy retry reached OpenNext build and Worker asset upload. Custom domain remains blocked until the `gitroast.ai` zone exists in this Cloudflare account. |
+| Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Live on workers.dev. `curl -I` returns `200 OK` and rendered HTML contains `GitRoast.ai`. Custom domain remains blocked until the `gitroast.ai` zone exists in this Cloudflare account. |
 | Card Worker | `https://card.gitroast.ai` | Not live. Cloudflare upload succeeded, but custom-domain route creation failed because Wrangler could not find a Cloudflare zone for `card.gitroast.ai`. |
 | Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live from Session 5 follow-up. Cache-key behavior verified on workers.dev only. |
 
@@ -27,6 +27,8 @@ Session 6 is the live-deploy close-out pass. This file records what was actually
 - Attempted production card Worker deploy. Bundle upload succeeded with version `179cb6d8-fdd8-47d6-9efe-29edd4c35b45`, then route attachment failed: `Could not find zone for card.gitroast.ai. Make sure the domain is set up to be proxied by Cloudflare.`
 - Retried the Cloudflare dashboard frontend build after correcting its commands. The build used `npm run build:cloudflare`, produced `.open-next/worker.js`, uploaded the Worker assets, and only failed when the old deploy command tried to attach `--domain gitroast.ai`.
 - Updated the frontend dashboard deploy command and repo script to deploy the generated `.open-next/worker.js` artifact directly without a custom-domain flag. The custom domain must be attached later after the `gitroast.ai` zone exists in this Cloudflare account.
+- Added a post-build OpenNext Worker patch for the generated `process.chdir("")` call that produced a Worker runtime `500`. Local `wrangler dev` then logged `GET / 200 OK`.
+- Deployed the patched frontend Worker to workers.dev. Wrangler reported version `b347c418-5228-468b-bde1-1c40bb254471`, `Total Upload: 3127.03 KiB / gzip: 678.04 KiB`, and `Worker Startup Time: 26 ms`.
 
 ## Confirmed platform limits
 
@@ -60,6 +62,8 @@ npm run deploy:direct
 ```
 
 `npm run deploy` is now a convenience wrapper for `npm run build:cloudflare && npm run deploy:direct`.
+
+`npm run build:cloudflare` also runs `scripts/patch-opennext-worker.mjs` after OpenNext builds. This keeps the generated Worker from throwing on OpenNext's empty `process.chdir("")` call in the Cloudflare runtime.
 
 ## Blocked live checks
 
