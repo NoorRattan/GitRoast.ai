@@ -25,22 +25,21 @@ export default function HomePage(): JSX.Element {
             <p className="eyebrow">GitHub profile audit</p>
             <h1 id="home-title">Find the weak spots in a developer profile before everyone else does.</h1>
             <p className="lede">
-              GitRoast turns a GitHub username into a scored audit, blunt local roast, improvement roadmap, and share card.
+              GitRoast turns a GitHub profile link into a scored audit, blunt local roast, improvement roadmap, and share card.
             </p>
 
             <form action="/search" className="audit-form">
               <label htmlFor="username" className="sr-only">
-                GitHub username
+                GitHub profile link
               </label>
               <input
                 id="username"
                 className="input hero-input"
                 name="username"
-                placeholder="torvalds"
+                placeholder="https://github.com/NoorRattan"
                 autoComplete="off"
-                pattern="[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*"
-                maxLength={39}
-                title="Use a valid GitHub username."
+                inputMode="url"
+                title="Paste a GitHub profile link, or type a GitHub username."
                 required
               />
               <button className="button primary hero-button" type="submit">Audit profile</button>
