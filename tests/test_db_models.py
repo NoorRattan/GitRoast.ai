@@ -2,6 +2,23 @@ from sqlalchemy import inspect
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.db.models import Base
+from app.db.session import async_database_engine_options
+
+
+def test_plain_postgres_url_is_normalized_for_asyncpg():
+    url, connect_args = async_database_engine_options(
+        "postgresql://user:pass@example.neon.tech/db?sslmode=require&channel_binding=require"
+    )
+
+    assert url == "postgresql+asyncpg://user:pass@example.neon.tech/db"
+    assert connect_args == {"ssl": True}
+
+
+def test_async_database_url_keeps_non_postgres_drivers():
+    url, connect_args = async_database_engine_options("sqlite+aiosqlite:///:memory:")
+
+    assert url == "sqlite+aiosqlite:///:memory:"
+    assert connect_args == {}
 
 
 async def test_db_schema_creates_expected_tables_and_columns():

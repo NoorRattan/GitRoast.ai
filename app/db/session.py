@@ -1,3 +1,4 @@
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
@@ -12,9 +13,25 @@ def init_db(settings: Settings | None = None, database_url: str | None = None) -
     if not url:
         raise ValueError("database_url or settings is required")
     if _engine is None:
-        _engine = create_async_engine(url, pool_pre_ping=True)
+        normalized_url, connect_args = async_database_engine_options(url)
+        _engine = create_async_engine(normalized_url, pool_pre_ping=True, connect_args=connect_args)
         _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
     return _session_factory
+
+
+def async_database_engine_options(database_url: str) -> tuple[str, dict[str, object]]:
+    url = make_url(database_url)
+    connect_args: dict[str, object] = {}
+
+    if url.drivername == "postgresql":
+        query = dict(url.query)
+        sslmode = query.pop("sslmode", None)
+        query.pop("channel_binding", None)
+        url = url.set(drivername="postgresql+asyncpg", query=query)
+        if sslmode in {"require", "verify-ca", "verify-full"}:
+            connect_args["ssl"] = True
+
+    return url.render_as_string(hide_password=False), connect_args
 
 
 def get_session_factory() -> async_sessionmaker[AsyncSession]:
