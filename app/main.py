@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
-from app.db.session import close_db, init_db
+from app.db.session import close_db, ensure_db_schema, init_db
 from app.routers import admin, audit, card_data, health, opt_out
 from app.services.cache import create_upstash_client
 from app.services.github_client import GitHubGraphQLClient
@@ -23,6 +23,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.cache_client = create_upstash_client(settings.upstash_url, settings.upstash_token)
     app.state.rate_limiters = create_rate_limiters(settings.upstash_url, settings.upstash_token)
     app.state.session_factory = init_db(settings)
+    await ensure_db_schema()
     app.state.refresh_locks = set()
     app.state.refresh_scheduled_count = 0
     try:

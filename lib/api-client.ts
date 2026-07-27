@@ -58,7 +58,8 @@ export type AdminCredentials = {
   password: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-api.onrender.com/api/v1";
+const SERVER_API_BASE_URL = "https://gitroast-ai.onrender.com/api/v1";
+const CLIENT_API_BASE_URL = "/api/v1";
 const CARD_BASE_URL = process.env.NEXT_PUBLIC_CARD_BASE_URL ?? "https://gitroast-card-preview.jnoorrattan.workers.dev/card";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -178,7 +179,8 @@ function encodeBasic(value: string): string {
 }
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const apiBaseUrl = typeof window === "undefined" ? SERVER_API_BASE_URL : CLIENT_API_BASE_URL;
+  const response = await fetch(`${apiBaseUrl}${path}`, init);
   const body = await response.json().catch(() => null) as JsonValue | null;
   if (!response.ok) {
     const errorBody = snakeToCamel<{ error?: { code?: string; message?: string } }>(body ?? {});

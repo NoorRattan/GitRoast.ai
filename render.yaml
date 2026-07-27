@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: gitroast-api
+    name: GitRoast.ai
     runtime: python
-    repo: https://github.com/NoorRattan/GitRoast.ai.git
+    repo: https://github.com/NoorRattan/GitRoast.ai
     branch: main
     plan: free
     buildCommand: pip install -e .
