@@ -3,13 +3,14 @@ import { AuditClient } from "@/components/audit/AuditClient";
 import { buildCardImageUrl, fetchCachedAudit } from "@/lib/api-client";
 
 type UsernamePageProps = {
-  params: {
+  params: Promise<{
     username: string;
-  };
+  }>;
 };
 
 export async function generateMetadata({ params }: UsernamePageProps): Promise<Metadata> {
-  const username = decodeURIComponent(params.username);
+  const { username: rawUsername } = await params;
+  const username = decodeURIComponent(rawUsername);
   const audit = await safeFetchCachedAudit(username);
   const imageUrl = audit ? buildCardImageUrl(username, audit.schemaVersion) : "https://card.gitroast.ai/card/generic.png";
   return {
@@ -31,7 +32,8 @@ export async function generateMetadata({ params }: UsernamePageProps): Promise<M
 }
 
 export default async function UsernamePage({ params }: UsernamePageProps): Promise<JSX.Element> {
-  const username = decodeURIComponent(params.username);
+  const { username: rawUsername } = await params;
+  const username = decodeURIComponent(rawUsername);
   const audit = await safeFetchCachedAudit(username);
   // Accepted v1 trade-off: a brand-new profile gets generic OG metadata because the server path only performs the fast GET cache read; the browser POST fills the result afterward.
   return (

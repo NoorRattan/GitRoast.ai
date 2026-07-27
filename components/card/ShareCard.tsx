@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { buildCardImageUrl } from "@/lib/api-client";
 
 type ShareCardProps = {
@@ -10,11 +11,12 @@ export function ShareCard({ username, schemaVersion }: ShareCardProps): JSX.Elem
   const imageUrl = buildCardImageUrl(username, schemaVersion);
   return (
     <section className="panel" style={{ padding: 16 }}>
-      <img
+      <Image
         src={imageUrl}
         alt={`${username} GitRoast share card`}
         width={1200}
         height={630}
+        unoptimized
         style={{ width: "100%", height: "auto", borderRadius: 8, border: "1px solid var(--line)" }}
       />
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { Scores } from "@/lib/api-client";
 import { buildCardImageUrl } from "@/lib/api-client";
@@ -67,7 +68,7 @@ function HtmlLabel({ label, y }: { label: string; y: number }): JSX.Element {
 function FallbackImage({ username, imageUrl }: { username: string; imageUrl: string }): JSX.Element {
   return (
     <section className="panel" data-testid="score-fallback" style={{ padding: 12 }}>
-      <img src={imageUrl} alt={`${username} static audit card`} width={1200} height={630} style={{ width: "100%", height: "auto", borderRadius: 8 }} />
+      <Image src={imageUrl} alt={`${username} static audit card`} width={1200} height={630} unoptimized style={{ width: "100%", height: "auto", borderRadius: 8 }} />
     </section>
   );
 }
