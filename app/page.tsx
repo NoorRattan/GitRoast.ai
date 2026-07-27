@@ -13,6 +13,9 @@ export default function HomePage(): JSX.Element {
       <div className="shell">
         <header className="topbar">
           <Link className="brand" href="/" aria-label="GitRoast.ai home">GitRoast.ai</Link>
+          <nav className="topbar-actions" aria-label="Primary navigation">
+            <a className="button ghost" href="https://github.com/NoorRattan/GitRoast.ai" target="_blank" rel="noreferrer">GitHub</a>
+          </nav>
         </header>
 
         <section className="hero-grid" aria-labelledby="home-title">
