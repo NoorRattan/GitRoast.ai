@@ -37,7 +37,7 @@ export function ScoreGrid({
           </div>
           <p className="score-context">
             {percentileColdStart
-              ? `Ahead of ${scores.percentileBenchmark}% of ${percentileSampleSize} comparable profiles — provisional`
+              ? `Ahead of ${scores.percentileBenchmark}% of ${percentileSampleSize} comparable ${percentileSampleSize === 1 ? "profile" : "profiles"} — provisional`
               : `Ahead of ${scores.percentileBenchmark}% of developers with similar account age`}
           </p>
           {percentileColdStart && (
