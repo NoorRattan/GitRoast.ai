@@ -28,11 +28,15 @@ describe("ScoreScene", () => {
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-91-50-80-65");
   });
 
-  it("omits the rank score when the cohort is still cold-starting", () => {
+  it("shows the rank bar even when the cohort is cold-starting, with a provisional note", () => {
     render(<ScoreScene scores={scores} username="newstarter" schemaVersion={1} percentileColdStart />);
 
-    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-60-50-80");
-    expect(screen.queryByText("Rank")).not.toBeInTheDocument();
+    // All 5 bars always rendered — signature includes percentileBenchmark.
+    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-60-50-80-65");
+    // Rank label still visible in the overlay.
+    expect(screen.getByText("Rank")).toBeInTheDocument();
+    // Kicker text flags provisional state.
+    expect(screen.getByText(/provisional rank/)).toBeInTheDocument();
   });
 
   it("keeps the 3D visual but freezes motion when reduced motion is requested", () => {

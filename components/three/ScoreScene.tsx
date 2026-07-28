@@ -3,21 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import type { Finding, Scores } from "@/lib/api-client";
 
-const baseScores: Array<[keyof Scores, string, string]> = [
+// All 5 score dimensions always rendered — Rank shown with provisional styling if needed.
+const orderedScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#e2b766"],
   ["projectDepth", "Depth", "#69c5b8"],
   ["commitConsistency", "Cadence", "#f0786b"],
-  ["techDiversity", "Stack", "#8ab4f8"]
+  ["techDiversity", "Stack", "#8ab4f8"],
+  ["percentileBenchmark", "Rank", "#a3d977"]
 ];
-const rankScore: [keyof Scores, string, string] = ["percentileBenchmark", "Rank", "#a3d977"];
 
-type HoveredBar = {
-  index: number;
-  screenX: number;
-  screenY: number;
-};
+const BAR_W = 0.74;
+const BAR_D = 0.74;
+const MAX_BAR_H = 4.2;
+const SPACING = 1.44;
 
-/** Animated Three.js score field that freezes on one frame for reduced motion. */
+type HoveredBar = { index: number; screenX: number; screenY: number };
+
+/** Animated Three.js vertical bar-chart score field. Freezes on one frame for reduced motion. */
 export default function ScoreScene({
   scores,
   username,
@@ -33,30 +35,24 @@ export default function ScoreScene({
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
-  const orderedScores = percentileColdStart ? baseScores : [...baseScores, rankScore];
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
   const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
   const [webglFailed, setWebglFailed] = useState(false);
 
   useEffect(() => {
     let frame = 0;
-    let cleanup = () => undefined;
+    let cleanup = () => undefined as void;
     let cancelled = false;
     setWebglFailed(false);
 
     async function renderScene() {
       const canvas = canvasRef.current;
-      if (!canvas) {
-        return;
-      }
+      if (!canvas) return;
 
       const THREE = await import("three");
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
 
-      // Determine initial theme from <html> data-theme attribute.
-      function isDarkTheme(): boolean {
+      function isDark(): boolean {
         return document.documentElement.getAttribute("data-theme") !== "light";
       }
 
@@ -74,53 +70,111 @@ export default function ScoreScene({
         return;
       }
       renderer.setClearColor(0x000000, 0);
+      renderer.shadowMap.enabled = true;
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-      camera.position.set(0, 0.16, 8.2);
+
+      // Camera angled slightly downward to show vertical bars with depth.
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+      camera.position.set(0, 3.6, 10.2);
+      camera.lookAt(0, 1.4, 0);
 
       const group = new THREE.Group();
-      group.position.set(-0.12, -0.05, 0);
       scene.add(group);
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, isDarkTheme() ? 1.7 : 2.2);
+      // ── Lighting ──────────────────────────────────────────────────────────
+      const ambientLight = new THREE.AmbientLight(0xffffff, isDark() ? 1.4 : 2.0);
       scene.add(ambientLight);
-      const keyLight = new THREE.DirectionalLight(0xffffff, isDarkTheme() ? 2.6 : 1.8);
-      keyLight.position.set(3, 4, 5);
+
+      const keyLight = new THREE.DirectionalLight(0xffffff, isDark() ? 2.8 : 2.0);
+      keyLight.position.set(4, 8, 6);
+      keyLight.castShadow = true;
       scene.add(keyLight);
 
+      const fillLight = new THREE.DirectionalLight(0x8ab4f8, isDark() ? 0.6 : 0.3);
+      fillLight.position.set(-5, 2, 3);
+      scene.add(fillLight);
+
+      // ── Decorative sphere + ring ───────────────────────────────────────────
       const core = new THREE.Mesh(
-        new THREE.IcosahedronGeometry(0.62, 2),
-        new THREE.MeshStandardMaterial({ color: 0xe2b766, roughness: 0.38, metalness: 0.34 })
+        new THREE.IcosahedronGeometry(0.58, 3),
+        new THREE.MeshStandardMaterial({
+          color: 0xe2b766,
+          roughness: 0.3,
+          metalness: 0.5,
+          emissive: 0xe2b766,
+          emissiveIntensity: 0.08
+        })
       );
-      core.position.set(-1.64, -0.03, 0.42);
+      core.position.set(-4.2, 0.72, -0.8);
       group.add(core);
 
       const ring = new THREE.Mesh(
-        new THREE.TorusGeometry(1.02, 0.035, 12, 72),
-        new THREE.MeshStandardMaterial({ color: 0x69c5b8, emissive: 0x133c37, roughness: 0.42 })
+        new THREE.TorusGeometry(0.96, 0.038, 14, 80),
+        new THREE.MeshStandardMaterial({
+          color: 0x69c5b8,
+          emissive: 0x133c37,
+          roughness: 0.38,
+          metalness: 0.1
+        })
       );
       ring.position.copy(core.position);
-      ring.rotation.x = Math.PI / 2.7;
+      ring.rotation.x = Math.PI / 2.6;
       group.add(ring);
 
+      // ── Floor plane ────────────────────────────────────────────────────────
+      const floorMat = new THREE.MeshStandardMaterial({
+        color: isDark() ? 0x161a1e : 0xdedad4,
+        roughness: 0.9,
+        metalness: 0
+      });
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), floorMat);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = -0.01;
+      floor.receiveShadow = true;
+      group.add(floor);
+
+      // ── Vertical score bars ────────────────────────────────────────────────
+      const totalW = (orderedScores.length - 1) * SPACING;
+
       const bars = orderedScores.map(([key, , color], index) => {
-        const score = Math.max(2, Math.min(100, scores[key]));
-        const width = 0.45 + score / 36;
+        const score = Math.max(4, Math.min(100, scores[key]));
+        const barH = (score / 100) * MAX_BAR_H;
+        const x = index * SPACING - totalW / 2;
+
         const material = new THREE.MeshStandardMaterial({
           color,
           emissive: color,
-          emissiveIntensity: 0.12,
-          roughness: 0.5,
-          metalness: 0.16
+          emissiveIntensity: 0.14,
+          roughness: 0.42,
+          metalness: 0.22
         });
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, 0.2, 0.44), material);
-        mesh.position.set(0.28 + width / 2, 1.26 - index * 0.66, (index % 2) * 0.18);
+
+        // Geometry centered at origin — we control position.y to pin base at y=0.
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(BAR_W, barH, BAR_D),
+          material
+        );
+        mesh.position.set(x, 0, 0); // will be updated in animate
+        mesh.scale.y = 0;           // starts invisible; entrance grows it upward
+        mesh.castShadow = true;
         group.add(mesh);
-        return { mesh, score };
+
+        // Subtle shadow blob on floor
+        const blobMat = new THREE.MeshBasicMaterial({
+          color: 0x000000,
+          transparent: true,
+          opacity: isDark() ? 0.22 : 0.1
+        });
+        const blob = new THREE.Mesh(new THREE.CircleGeometry(BAR_W * 0.52, 20), blobMat);
+        blob.rotation.x = -Math.PI / 2;
+        blob.position.set(x, 0.001, 0);
+        group.add(blob);
+
+        return { mesh, score, barH, targetCenterY: barH / 2 };
       });
 
-      // Raycaster for hover detection.
+      // ── Raycasting ─────────────────────────────────────────────────────────
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const barMeshes = bars.map(({ mesh }) => mesh);
@@ -129,103 +183,101 @@ export default function ScoreScene({
       let dragMoved = false;
       let pointerX = 0;
       let pointerY = 0;
-      let dragRotationX = 0;
-      let dragRotationY = 0;
-      let hoverRotationX = 0;
-      let hoverRotationY = 0;
+      let dragRotY = 0;
+      let dragRotX = 0;
+      let hoverRotY = 0;
+      let hoverRotX = 0;
       const startedAt = performance.now();
 
       function updateHover(clientX: number, clientY: number): void {
-        // canvas is guaranteed non-null here (we checked at the start of renderScene),
-        // but we re-assert for strict null checks.
-        const currentCanvas = canvasRef.current;
-        if (!currentCanvas) return;
-        const rect = currentCanvas.getBoundingClientRect();
+        const cv = canvasRef.current;
+        if (!cv) return;
+        const rect = cv.getBoundingClientRect();
         pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
-        const intersects = raycaster.intersectObjects(barMeshes);
-        if (intersects.length > 0) {
-          const barIndex = barMeshes.findIndex((m) => m === intersects[0].object);
-          if (barIndex !== -1) {
-            // Project bar position to screen coordinates.
-            const barPos = new THREE.Vector3();
-            intersects[0].object.getWorldPosition(barPos);
-            barPos.project(camera);
-            const rect2 = currentCanvas.getBoundingClientRect();
-            const sx = (barPos.x * 0.5 + 0.5) * rect2.width;
-            const sy = (-barPos.y * 0.5 + 0.5) * rect2.height;
-            setHoveredBar({ index: barIndex, screenX: sx, screenY: sy });
+        const hits = raycaster.intersectObjects(barMeshes);
+        if (hits.length > 0) {
+          const idx = barMeshes.findIndex((m) => m === hits[0].object);
+          if (idx !== -1) {
+            const pos = new THREE.Vector3();
+            hits[0].object.getWorldPosition(pos);
+            pos.project(camera);
+            const r2 = cv.getBoundingClientRect();
+            const sx = (pos.x * 0.5 + 0.5) * r2.width;
+            const sy = (-pos.y * 0.5 + 0.5) * r2.height;
+            // Highlight hovered bar
+            barMeshes.forEach((m, i) => {
+              (m.material as import("three").MeshStandardMaterial).emissiveIntensity =
+                i === idx ? 0.44 : 0.14;
+            });
+            setHoveredBar({ index: idx, screenX: sx, screenY: sy });
             return;
           }
         }
+        barMeshes.forEach((m) => {
+          (m.material as import("three").MeshStandardMaterial).emissiveIntensity = 0.14;
+        });
         setHoveredBar(null);
       }
 
-      const pointerDown = (event: PointerEvent) => {
+      const onPointerDown = (e: PointerEvent) => {
         dragging = true;
         dragMoved = false;
-        pointerX = event.clientX;
-        pointerY = event.clientY;
-        canvas.setPointerCapture(event.pointerId);
+        pointerX = e.clientX;
+        pointerY = e.clientY;
+        canvas.setPointerCapture(e.pointerId);
       };
-      const pointerMove = (event: PointerEvent) => {
+      const onPointerMove = (e: PointerEvent) => {
         if (dragging) {
-          const dx = event.clientX - pointerX;
-          const dy = event.clientY - pointerY;
-          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-            dragMoved = true;
-          }
-          dragRotationY += dx * 0.008;
-          dragRotationX += dy * 0.006;
-          pointerX = event.clientX;
-          pointerY = event.clientY;
+          const dx = e.clientX - pointerX;
+          const dy = e.clientY - pointerY;
+          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
+          dragRotY += dx * 0.007;
+          dragRotX += dy * 0.005;
+          pointerX = e.clientX;
+          pointerY = e.clientY;
           return;
         }
         const rect = canvas.getBoundingClientRect();
-        hoverRotationY = ((event.clientX - rect.left) / rect.width - 0.5) * 0.18;
-        hoverRotationX = ((event.clientY - rect.top) / rect.height - 0.5) * 0.12;
-        updateHover(event.clientX, event.clientY);
+        hoverRotY = ((e.clientX - rect.left) / rect.width - 0.5) * 0.22;
+        hoverRotX = ((e.clientY - rect.top) / rect.height - 0.5) * 0.1;
+        updateHover(e.clientX, e.clientY);
       };
-      const pointerUp = (event: PointerEvent) => {
+      const onPointerUp = (e: PointerEvent) => {
         dragging = false;
-        if (canvas.hasPointerCapture(event.pointerId)) {
-          canvas.releasePointerCapture(event.pointerId);
-        }
-        // Tap without significant drag = hover reveal.
-        if (!dragMoved) {
-          updateHover(event.clientX, event.clientY);
-        }
+        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+        if (!dragMoved) updateHover(e.clientX, e.clientY);
       };
-      const pointerLeave = () => {
+      const onPointerLeave = () => {
         if (!dragging) {
-          hoverRotationX = 0;
-          hoverRotationY = 0;
+          hoverRotY = 0;
+          hoverRotX = 0;
+          barMeshes.forEach((m) => {
+            (m.material as import("three").MeshStandardMaterial).emissiveIntensity = 0.14;
+          });
           setHoveredBar(null);
         }
       };
 
       const resize = () => {
         const rect = canvas.getBoundingClientRect();
-        const width = Math.max(1, rect.width);
-        const height = Math.max(1, rect.height);
+        const w = Math.max(1, rect.width);
+        const h = Math.max(1, rect.height);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        renderer.setSize(width, height, false);
-        camera.aspect = width / height;
+        renderer.setSize(w, h, false);
+        camera.aspect = w / h;
         camera.updateProjectionMatrix();
-        if (reducedMotion) {
-          renderer.render(scene, camera);
-        }
+        if (reducedMotion) renderer.render(scene, camera);
       };
 
-      // Update lighting when theme changes.
       function applyTheme(): void {
-        const dark = isDarkTheme();
-        ambientLight.intensity = dark ? 1.7 : 2.2;
-        keyLight.intensity = dark ? 2.6 : 1.8;
-        if (reducedMotion) {
-          renderer.render(scene, camera);
-        }
+        const dark = isDark();
+        ambientLight.intensity = dark ? 1.4 : 2.0;
+        keyLight.intensity = dark ? 2.8 : 2.0;
+        fillLight.intensity = dark ? 0.6 : 0.3;
+        floorMat.color.set(dark ? 0x161a1e : 0xdedad4);
+        if (reducedMotion) renderer.render(scene, camera);
       }
 
       const themeObserver = new MutationObserver(() => applyTheme());
@@ -233,24 +285,45 @@ export default function ScoreScene({
         attributes: true,
         attributeFilter: ["data-theme"]
       });
-      const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
 
+      const resizeObserver = typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(resize)
+        : null;
+
+      // ── Animation loop ─────────────────────────────────────────────────────
       const animate = () => {
         const now = performance.now() / 1000;
+        const elapsed = performance.now() - startedAt;
+
+        // Group gentle idle sway + drag/hover response
         group.rotation.y += (
-          Math.sin(now * 0.38) * 0.12 + dragRotationY + hoverRotationY - group.rotation.y
-        ) * 0.08;
+          Math.sin(now * 0.3) * 0.06 + dragRotY + hoverRotY - group.rotation.y
+        ) * 0.072;
         group.rotation.x += (
-          Math.sin(now * 0.31) * 0.06 + dragRotationX + hoverRotationX - group.rotation.x
-        ) * 0.08;
-        core.rotation.x += 0.012;
-        core.rotation.y += 0.018;
-        ring.rotation.z -= 0.014;
-        bars.forEach(({ mesh, score }, index) => {
-          const entrance = Math.min(1, Math.max(0.001, (performance.now() - startedAt - index * 90) / 520));
-          mesh.scale.x = 1 - Math.pow(1 - entrance, 3);
-          mesh.position.z = Math.sin(now * 1.15 + index) * 0.08 + score / 450;
+          Math.sin(now * 0.22) * 0.03 + dragRotX + hoverRotX - group.rotation.x
+        ) * 0.072;
+
+        // Sphere and ring spin
+        core.rotation.x += 0.01;
+        core.rotation.y += 0.016;
+        ring.rotation.z -= 0.012;
+
+        // Bars: entrance grow from bottom + idle float
+        bars.forEach(({ mesh, barH, targetCenterY }, index) => {
+          const stagger = index * 100;
+          const t = Math.min(1, Math.max(0, (elapsed - stagger) / 560));
+          // Cubic ease-out
+          const entrance = 1 - Math.pow(1 - t, 3);
+
+          mesh.scale.y = Math.max(0.001, entrance);
+          // Pin base to y=0: center moves up proportionally to scale
+          mesh.position.y = targetCenterY * entrance
+            + Math.sin(now * 1.05 + index * 0.9) * 0.035 * entrance;
+
+          // Subtle X/Z drift for liveliness
+          mesh.position.z = Math.sin(now * 0.8 + index * 1.2) * 0.04;
         });
+
         renderer.render(scene, camera);
         frame = window.requestAnimationFrame(animate);
       };
@@ -258,14 +331,20 @@ export default function ScoreScene({
       resize();
       resizeObserver?.observe(canvas);
       window.addEventListener("resize", resize);
+
       if (reducedMotion) {
+        // Snap to full height immediately
+        bars.forEach(({ mesh, targetCenterY }) => {
+          mesh.scale.y = 1;
+          mesh.position.y = targetCenterY;
+        });
         renderer.render(scene, camera);
       } else {
-        canvas.addEventListener("pointerdown", pointerDown);
-        canvas.addEventListener("pointermove", pointerMove);
-        canvas.addEventListener("pointerup", pointerUp);
-        canvas.addEventListener("pointercancel", pointerUp);
-        canvas.addEventListener("pointerleave", pointerLeave);
+        canvas.addEventListener("pointerdown", onPointerDown);
+        canvas.addEventListener("pointermove", onPointerMove);
+        canvas.addEventListener("pointerup", onPointerUp);
+        canvas.addEventListener("pointercancel", onPointerUp);
+        canvas.addEventListener("pointerleave", onPointerLeave);
         animate();
       }
 
@@ -273,72 +352,73 @@ export default function ScoreScene({
         window.cancelAnimationFrame(frame);
         window.removeEventListener("resize", resize);
         resizeObserver?.disconnect();
-        canvas.removeEventListener("pointerdown", pointerDown);
-        canvas.removeEventListener("pointermove", pointerMove);
-        canvas.removeEventListener("pointerup", pointerUp);
-        canvas.removeEventListener("pointercancel", pointerUp);
-        canvas.removeEventListener("pointerleave", pointerLeave);
+        canvas.removeEventListener("pointerdown", onPointerDown);
+        canvas.removeEventListener("pointermove", onPointerMove);
+        canvas.removeEventListener("pointerup", onPointerUp);
+        canvas.removeEventListener("pointercancel", onPointerUp);
+        canvas.removeEventListener("pointerleave", onPointerLeave);
         themeObserver.disconnect();
         renderer.dispose();
         bars.forEach(({ mesh }) => {
           mesh.geometry.dispose();
           if (Array.isArray(mesh.material)) {
-            mesh.material.forEach((material) => material.dispose());
+            mesh.material.forEach((m) => m.dispose());
           } else {
             mesh.material.dispose();
           }
         });
         core.geometry.dispose();
+        (core.material as import("three").Material).dispose();
         ring.geometry.dispose();
+        (ring.material as import("three").Material).dispose();
+        floor.geometry.dispose();
+        floorMat.dispose();
         setHoveredBar(null);
       };
     }
 
     void renderScene();
-
-    return () => {
-      cancelled = true;
-      cleanup();
-    };
+    return () => { cancelled = true; cleanup(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scores, reducedMotion, percentileColdStart]);
+  }, [scores, reducedMotion]);
 
-  // Build findings per score index for the tooltip.
+  // Build findings per bar for tooltip
   const findingsPerBar: Finding[][] = orderedScores.map(([key]) =>
     findings.filter(
-      (f) => key !== "percentileBenchmark" && f.contributesTo === (key as Finding["contributesTo"])
+      (f) =>
+        key !== "percentileBenchmark" &&
+        f.contributesTo === (key as Finding["contributesTo"])
     )
   );
+
+  const ariaLabel = reducedMotion
+    ? "Static 3D score bar chart"
+    : "Animated 3D score bar chart. Drag to rotate; hover a bar to see scoring evidence.";
 
   return (
     <section
       className="panel score-visual"
-      aria-label={reducedMotion ? "Static 3D score visualization" : "Animated 3D score visualization. Drag to rotate; hover bars to see scoring evidence."}
+      aria-label={ariaLabel}
       data-testid="score-scene"
       data-score-signature={signature}
       data-motion={reducedMotion ? "static" : "animated"}
       data-profile={username}
       data-schema-version={schemaVersion}
     >
-      <span className="score-visual-kicker">3D score field</span>
-      <div className="score-visual-body">
-        <div className="score-visual-stage" data-webgl={webglFailed ? "fallback" : "active"}>
-          <canvas ref={canvasRef} data-testid="score-canvas" aria-hidden="true" />
-          {webglFailed ? (
-            <div className="score-visual-fallback" aria-hidden="true">
-              {orderedScores.map(([key, , color], index) => (
-                <span
-                  key={key}
-                  style={{
-                    "--bar-color": color,
-                    "--bar-width": `${Math.max(8, scores[key])}%`,
-                    "--bar-index": index
-                  } as React.CSSProperties}
-                />
-              ))}
-            </div>
-          ) : null}
+      {webglFailed ? (
+        <div className="score-visual-loading">
+          <p className="muted" style={{ textAlign: "center", padding: "20px" }}>
+            3D view unavailable — WebGL is not supported in this browser.
+          </p>
         </div>
+      ) : (
+        <canvas ref={canvasRef} data-testid="score-canvas" aria-hidden="true" />
+      )}
+
+      <div className="score-visual-overlay">
+        <span className="score-visual-kicker">
+          3D score field{percentileColdStart ? " · provisional rank" : ""}
+        </span>
         <div className="score-visual-labels">
           {orderedScores.map(([key, label, color]) => (
             <div key={key}>
@@ -348,6 +428,7 @@ export default function ScoreScene({
           ))}
         </div>
       </div>
+
       {hoveredBar !== null && (
         <FindingsTooltip
           barIndex={hoveredBar.index}
@@ -374,13 +455,11 @@ function FindingsTooltip({
   label: string;
   findings: Finding[];
 }): JSX.Element {
-  // Offset the tooltip above and slightly to the right of the bar.
   const style: React.CSSProperties = {
-    left: Math.min(screenX + 12, 9999),
-    top: Math.max(screenY - 120, 8),
+    left: Math.min(screenX + 14, 9999),
+    top: Math.max(screenY - 130, 8),
     opacity: 1
   };
-
   return (
     <div
       className="scene-findings-tooltip"
@@ -406,19 +485,11 @@ function FindingsTooltip({
 function usePrefersReducedMotion(): boolean {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(media.matches);
-    const listener = () => setReduced(media.matches);
-    if ("addEventListener" in media) {
-      media.addEventListener("change", listener);
-      return () => media.removeEventListener("change", listener);
-    }
-    const legacyMedia = media as MediaQueryList & {
-      addListener: (listener: (event: MediaQueryListEvent) => void) => void;
-      removeListener: (listener: (event: MediaQueryListEvent) => void) => void;
-    };
-    legacyMedia.addListener(listener);
-    return () => legacyMedia.removeListener(listener);
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
+    const listener = () => setReduced(mq.matches);
+    mq.addEventListener("change", listener);
+    return () => mq.removeEventListener("change", listener);
   }, []);
   return reduced;
 }
