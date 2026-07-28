@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Scores } from "@/lib/api-client";
+import type { Finding, Scores } from "@/lib/api-client";
 
 const orderedScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#e2b766"],
@@ -11,11 +11,29 @@ const orderedScores: Array<[keyof Scores, string, string]> = [
   ["percentileBenchmark", "Rank", "#a3d977"]
 ];
 
+type HoveredBar = {
+  index: number;
+  screenX: number;
+  screenY: number;
+};
+
 /** Animated Three.js score field that freezes on one frame for reduced motion. */
-export default function ScoreScene({ scores, username, schemaVersion }: { scores: Scores; username: string; schemaVersion: number }): JSX.Element {
+export default function ScoreScene({
+  scores,
+  username,
+  schemaVersion,
+  findings = []
+}: {
+  scores: Scores;
+  username: string;
+  schemaVersion: number;
+  findings?: Finding[];
+}): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
+  const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
 
   useEffect(() => {
     let frame = 0;
@@ -33,6 +51,11 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         return;
       }
 
+      // Determine initial theme from <html> data-theme attribute.
+      function isDarkTheme(): boolean {
+        return document.documentElement.getAttribute("data-theme") !== "light";
+      }
+
       const renderer = new THREE.WebGLRenderer({
         canvas,
         antialias: true,
@@ -47,8 +70,10 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
 
       const group = new THREE.Group();
       scene.add(group);
-      scene.add(new THREE.AmbientLight(0xffffff, 1.7));
-      const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, isDarkTheme() ? 1.7 : 2.2);
+      scene.add(ambientLight);
+      const keyLight = new THREE.DirectionalLight(0xffffff, isDarkTheme() ? 2.6 : 1.8);
       keyLight.position.set(3, 4, 5);
       scene.add(keyLight);
 
@@ -82,7 +107,14 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         group.add(mesh);
         return { mesh, score };
       });
+
+      // Raycaster for hover detection.
+      const raycaster = new THREE.Raycaster();
+      const pointer = new THREE.Vector2();
+      const barMeshes = bars.map(({ mesh }) => mesh);
+
       let dragging = false;
+      let dragMoved = false;
       let pointerX = 0;
       let pointerY = 0;
       let dragRotationX = 0;
@@ -91,16 +123,49 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
       let hoverRotationY = 0;
       const startedAt = performance.now();
 
+      function updateHover(clientX: number, clientY: number): void {
+        // canvas is guaranteed non-null here (we checked at the start of renderScene),
+        // but we re-assert for strict null checks.
+        const currentCanvas = canvasRef.current;
+        if (!currentCanvas) return;
+        const rect = currentCanvas.getBoundingClientRect();
+        pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+        pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointer, camera);
+        const intersects = raycaster.intersectObjects(barMeshes);
+        if (intersects.length > 0) {
+          const barIndex = barMeshes.findIndex((m) => m === intersects[0].object);
+          if (barIndex !== -1) {
+            // Project bar position to screen coordinates.
+            const barPos = new THREE.Vector3();
+            intersects[0].object.getWorldPosition(barPos);
+            barPos.project(camera);
+            const rect2 = currentCanvas.getBoundingClientRect();
+            const sx = (barPos.x * 0.5 + 0.5) * rect2.width;
+            const sy = (-barPos.y * 0.5 + 0.5) * rect2.height;
+            setHoveredBar({ index: barIndex, screenX: sx, screenY: sy });
+            return;
+          }
+        }
+        setHoveredBar(null);
+      }
+
       const pointerDown = (event: PointerEvent) => {
         dragging = true;
+        dragMoved = false;
         pointerX = event.clientX;
         pointerY = event.clientY;
         canvas.setPointerCapture(event.pointerId);
       };
       const pointerMove = (event: PointerEvent) => {
         if (dragging) {
-          dragRotationY += (event.clientX - pointerX) * 0.008;
-          dragRotationX += (event.clientY - pointerY) * 0.006;
+          const dx = event.clientX - pointerX;
+          const dy = event.clientY - pointerY;
+          if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+            dragMoved = true;
+          }
+          dragRotationY += dx * 0.008;
+          dragRotationX += dy * 0.006;
           pointerX = event.clientX;
           pointerY = event.clientY;
           return;
@@ -108,17 +173,23 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         const rect = canvas.getBoundingClientRect();
         hoverRotationY = ((event.clientX - rect.left) / rect.width - 0.5) * 0.18;
         hoverRotationX = ((event.clientY - rect.top) / rect.height - 0.5) * 0.12;
+        updateHover(event.clientX, event.clientY);
       };
       const pointerUp = (event: PointerEvent) => {
         dragging = false;
         if (canvas.hasPointerCapture(event.pointerId)) {
           canvas.releasePointerCapture(event.pointerId);
         }
+        // Tap without significant drag = hover reveal.
+        if (!dragMoved) {
+          updateHover(event.clientX, event.clientY);
+        }
       };
       const pointerLeave = () => {
         if (!dragging) {
           hoverRotationX = 0;
           hoverRotationY = 0;
+          setHoveredBar(null);
         }
       };
 
@@ -134,6 +205,22 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
           renderer.render(scene, camera);
         }
       };
+
+      // Update lighting when theme changes.
+      function applyTheme(): void {
+        const dark = isDarkTheme();
+        ambientLight.intensity = dark ? 1.7 : 2.2;
+        keyLight.intensity = dark ? 2.6 : 1.8;
+        if (reducedMotion) {
+          renderer.render(scene, camera);
+        }
+      }
+
+      const themeObserver = new MutationObserver(() => applyTheme());
+      themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["data-theme"]
+      });
 
       const animate = () => {
         const now = performance.now() / 1000;
@@ -176,6 +263,7 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         canvas.removeEventListener("pointerup", pointerUp);
         canvas.removeEventListener("pointercancel", pointerUp);
         canvas.removeEventListener("pointerleave", pointerLeave);
+        themeObserver.disconnect();
         renderer.dispose();
         bars.forEach(({ mesh }) => {
           mesh.geometry.dispose();
@@ -187,6 +275,7 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         });
         core.geometry.dispose();
         ring.geometry.dispose();
+        setHoveredBar(null);
       };
     }
 
@@ -196,12 +285,21 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
       cancelled = true;
       cleanup();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scores, reducedMotion]);
+
+  // Build findings per score index for the tooltip.
+  const findingsPerBar: Finding[][] = orderedScores.map(([key]) =>
+    findings.filter(
+      (f) => key !== "percentileBenchmark" && f.contributesTo === (key as Finding["contributesTo"])
+    )
+  );
 
   return (
     <section
+      ref={sectionRef}
       className="panel score-visual"
-      aria-label={reducedMotion ? "Static 3D score visualization" : "Animated 3D score visualization"}
+      aria-label={reducedMotion ? "Static 3D score visualization" : "Animated 3D score visualization. Drag to rotate; hover bars to see scoring evidence."}
       data-testid="score-scene"
       data-score-signature={signature}
       data-motion={reducedMotion ? "static" : "animated"}
@@ -220,7 +318,58 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
           ))}
         </div>
       </div>
+      {hoveredBar !== null && (
+        <FindingsTooltip
+          barIndex={hoveredBar.index}
+          screenX={hoveredBar.screenX}
+          screenY={hoveredBar.screenY}
+          label={orderedScores[hoveredBar.index][1]}
+          findings={findingsPerBar[hoveredBar.index]}
+        />
+      )}
     </section>
+  );
+}
+
+function FindingsTooltip({
+  barIndex,
+  screenX,
+  screenY,
+  label,
+  findings
+}: {
+  barIndex: number;
+  screenX: number;
+  screenY: number;
+  label: string;
+  findings: Finding[];
+}): JSX.Element {
+  // Offset the tooltip above and slightly to the right of the bar.
+  const style: React.CSSProperties = {
+    left: Math.min(screenX + 12, 9999),
+    top: Math.max(screenY - 120, 8),
+    opacity: 1
+  };
+
+  return (
+    <div
+      className="scene-findings-tooltip"
+      style={style}
+      role="tooltip"
+      id={`bar-tooltip-${barIndex}`}
+      aria-live="polite"
+    >
+      <p className="scene-findings-tooltip-label">{label} — evidence</p>
+      {findings.length > 0 ? (
+        <ul>
+          {findings.map((f) => (
+            <li key={f.metric}>{f.detail}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="scene-findings-tooltip-empty">No specific signals for this score.</p>
+      )}
+    </div>
   );
 }
 

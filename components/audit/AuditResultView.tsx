@@ -24,7 +24,7 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
           percentileSampleSize={audit.percentileSampleSize}
           percentileColdStart={audit.percentileColdStart}
         />
-        <FindingsList findings={audit.findings} />
+        {audit.findings.length > 0 && <FindingsList findings={audit.findings} />}
         <section className="panel roast-panel" aria-label="Roast verdict">
           <p>{audit.roastText}</p>
         </section>
