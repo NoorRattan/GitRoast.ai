@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Finding, Scores } from "@/lib/api-client";
 
-const orderedScores: Array<[keyof Scores, string, string]> = [
+const baseScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#e2b766"],
   ["projectDepth", "Depth", "#69c5b8"],
   ["commitConsistency", "Cadence", "#f0786b"],
-  ["techDiversity", "Stack", "#8ab4f8"],
-  ["percentileBenchmark", "Rank", "#a3d977"]
+  ["techDiversity", "Stack", "#8ab4f8"]
 ];
+const rankScore: [keyof Scores, string, string] = ["percentileBenchmark", "Rank", "#a3d977"];
 
 type HoveredBar = {
   index: number;
@@ -22,16 +22,19 @@ export default function ScoreScene({
   scores,
   username,
   schemaVersion,
-  findings = []
+  findings = [],
+  percentileColdStart = false
 }: {
   scores: Scores;
   username: string;
   schemaVersion: number;
   findings?: Finding[];
+  percentileColdStart?: boolean;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sectionRef = useRef<HTMLElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
+  const orderedScores = percentileColdStart ? baseScores : [...baseScores, rankScore];
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
   const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
 
@@ -286,7 +289,7 @@ export default function ScoreScene({
       cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scores, reducedMotion]);
+  }, [scores, reducedMotion, percentileColdStart]);
 
   // Build findings per score index for the tooltip.
   const findingsPerBar: Finding[][] = orderedScores.map(([key]) =>

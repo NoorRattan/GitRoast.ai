@@ -5,7 +5,7 @@ import { avatarToDataUri } from "../src/avatar";
 import { CARD_CACHE_CONTROL, PLACEHOLDER_AVATAR_DATA_URI, getFallbackCard } from "../src/fallback";
 import { getFontLoadCount, resetFontCacheForTests } from "../src/fonts";
 import { handleCardRequest } from "../src/index";
-import { CARD_HEIGHT, CARD_WIDTH, renderSvg } from "../src/render";
+import { CARD_HEIGHT, CARD_WIDTH, cohortRankCopy, renderSvg } from "../src/render";
 import type { CardData } from "../src/types";
 
 const env = { BACKEND_BASE_URL: "https://api.gitroast.test/api/v1" };
@@ -141,6 +141,19 @@ describe("card Worker pipeline", () => {
     await renderSvg(cardData, PLACEHOLDER_AVATAR_DATA_URI);
 
     expect(getFontLoadCount()).toBe(1);
+  });
+
+  it("does not render a cohort rank number during cold start", async () => {
+    expect(cohortRankCopy({
+      ...cardData,
+      percentile_benchmark: 75,
+      percentile_sample_size: 1,
+      percentile_cold_start: true
+    })).toEqual({
+      value: "Not enough data",
+      detail: "more comparable profiles needed",
+      fontSize: 36
+    });
   });
 
   it("successful render rasterizes to exactly 1200x630 PNG", async () => {

@@ -28,6 +28,13 @@ describe("ScoreScene", () => {
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-91-50-80-65");
   });
 
+  it("omits the rank score when the cohort is still cold-starting", () => {
+    render(<ScoreScene scores={scores} username="newstarter" schemaVersion={1} percentileColdStart />);
+
+    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-60-50-80");
+    expect(screen.queryByText("Rank")).not.toBeInTheDocument();
+  });
+
   it("keeps the 3D visual but freezes motion when reduced motion is requested", () => {
     window.matchMedia = vi.fn().mockReturnValue({
       matches: true,

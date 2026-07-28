@@ -7,7 +7,7 @@ const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string]>
   ["techDiversity", "Tech"]
 ];
 
-/** Displays the five composite audit scores using camelCase frontend fields only. */
+/** Displays the four score dimensions plus the cohort-rank status. */
 export function ScoreGrid({
   scores,
   percentileSampleSize,
@@ -17,6 +17,8 @@ export function ScoreGrid({
   percentileSampleSize: number;
   percentileColdStart: boolean;
 }): JSX.Element {
+  const hasCohortRank = !percentileColdStart;
+
   return (
     <section className="panel score-panel" aria-label="Audit score breakdown">
       <div className="score-grid">
@@ -28,21 +30,24 @@ export function ScoreGrid({
         ))}
         <div className="score-tile percentile-tile">
           <div className="muted score-label">Cohort rank</div>
-          <div className="score-value">
-            {percentileColdStart && (
-              <span className="score-provisional" aria-label="provisional">~</span>
-            )}
-            {scores.percentileBenchmark}
-            <span className="score-suffix">%</span>
-          </div>
+          {hasCohortRank ? (
+            <div className="score-value">
+              {scores.percentileBenchmark}
+              <span className="score-suffix">%</span>
+            </div>
+          ) : (
+            <div className="score-value score-value-unavailable" aria-label="Not enough comparable profiles yet">
+              N/A
+            </div>
+          )}
           <p className="score-context">
-            {percentileColdStart
-              ? `Ahead of ${scores.percentileBenchmark}% of ${percentileSampleSize} comparable ${percentileSampleSize === 1 ? "profile" : "profiles"} — provisional`
-              : `Ahead of ${scores.percentileBenchmark}% of developers with similar account age`}
+            {hasCohortRank
+              ? `Ahead of ${scores.percentileBenchmark}% of developers with similar account age`
+              : "Not enough comparable profiles yet."}
           </p>
           {percentileColdStart && (
             <span className="cold-start-caveat">
-              Based on a small, growing sample — this rank may shift as more profiles are compared.
+              {percentileSampleSize} comparable {percentileSampleSize === 1 ? "profile" : "profiles"} so far. Rank appears after the cohort is large enough.
             </span>
           )}
         </div>
