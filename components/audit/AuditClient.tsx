@@ -62,7 +62,15 @@ export function AuditClient({ username, initialAudit }: { username: string; init
       {audit ? (
         <AuditResultView
           audit={audit}
-          visual={<ScoreScene scores={audit.scores} username={audit.username} schemaVersion={audit.schemaVersion} />}
+          visual={(
+            <ScoreScene
+              scores={audit.scores}
+              username={audit.username}
+              schemaVersion={audit.schemaVersion}
+              findings={audit.findings}
+              percentileColdStart={audit.percentileColdStart}
+            />
+          )}
         />
       ) : (
         <section className="panel empty-panel">

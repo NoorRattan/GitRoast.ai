@@ -7,7 +7,9 @@ const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string]>
   ["techDiversity", "Tech"]
 ];
 
-/** Displays the five composite audit scores using camelCase frontend fields only. */
+/** Displays the four score dimensions plus the cohort-rank tile.
+ *  Cold-start: value is still shown but prefixed with ~ and a caveat is appended.
+ *  There is no N/A state — the backend always provides a percentileBenchmark. */
 export function ScoreGrid({
   scores,
   percentileSampleSize,
@@ -29,13 +31,22 @@ export function ScoreGrid({
         <div className="score-tile percentile-tile">
           <div className="muted score-label">Cohort rank</div>
           <div className="score-value">
-            {scores.percentileBenchmark}<span className="score-suffix">th</span>
+            {percentileColdStart && (
+              <span className="score-provisional" aria-label="provisional">~</span>
+            )}
+            {scores.percentileBenchmark}
+            <span className="score-suffix">%</span>
           </div>
           <p className="score-context">
             {percentileColdStart
-              ? `Provisional - ${percentileSampleSize} comparable profiles`
-              : `Compared with ${percentileSampleSize} profiles of similar account age`}
+              ? `Ahead of ${scores.percentileBenchmark}% of ${percentileSampleSize} comparable ${percentileSampleSize === 1 ? "profile" : "profiles"} — provisional`
+              : `Ahead of ${scores.percentileBenchmark}% of developers with similar account age`}
           </p>
+          {percentileColdStart && (
+            <span className="cold-start-caveat">
+              Based on a small, growing sample — this rank may shift as more profiles are compared.
+            </span>
+          )}
         </div>
       </div>
     </section>

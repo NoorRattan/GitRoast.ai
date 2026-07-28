@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { SITE_URL } from "@/lib/site";
 import { Providers } from "./providers";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import "./globals.css";
 
 const inter = localFont({
@@ -27,15 +28,27 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#101111",
-  colorScheme: "dark"
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#101111" },
+    { media: "(prefers-color-scheme: light)", color: "#f0ece3" }
+  ],
+  colorScheme: "dark light"
 };
+
+// Inline script evaluated synchronously before first paint to prevent
+// flash of wrong theme. Must not reference external variables.
+const noFlashScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);return;}var q=window.matchMedia('(prefers-color-scheme: dark)');document.documentElement.setAttribute('data-theme',q.matches?'dark':'light');}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (
     <html className={inter.variable} lang="en">
+      <head>
+        {/* Synchronous theme bootstrap — must run before body renders */}
+        <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
+        <ThemeToggle />
       </body>
     </html>
   );

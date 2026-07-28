@@ -66,6 +66,26 @@ describe("AuditClient", () => {
     expect(screen.getByText(/8 comparable profiles/)).toBeInTheDocument();
   });
 
+  it("suppresses cohort rank percentages while the comparable sample is too small", () => {
+    renderWithQuery(<AuditClient username="newstarter" initialAudit={audit({
+      scores: {
+        profileStrength: 70,
+        projectDepth: 60,
+        commitConsistency: 50,
+        techDiversity: 80,
+        percentileBenchmark: 75
+      },
+      percentileSampleSize: 1,
+      percentileColdStart: true
+    })} />);
+
+    // Cold-start: value shown with ~ prefix, provisional context, and growing-sample caveat.
+    expect(screen.getByLabelText("provisional")).toBeInTheDocument(); // ~ span
+    expect(screen.getByText(/Ahead of 75% of 1 comparable profile/)).toBeInTheDocument();
+    expect(screen.getByText(/Based on a small, growing sample/)).toBeInTheDocument();
+    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+  });
+
   it("requests a new roast when intensity changes from a server-provided audit", async () => {
     const initial = audit({
       roastIntensityRequested: "medium",

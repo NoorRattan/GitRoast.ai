@@ -8,7 +8,28 @@ export const CARD_HEIGHT = 630;
 
 let resvgInitPromise: Promise<void> | null = null;
 
+export function cohortRankCopy(data: Pick<CardData, "percentile_benchmark" | "percentile_sample_size" | "percentile_cold_start">): {
+  value: string | number;
+  detail: string;
+  fontSize: number;
+} {
+  if (data.percentile_cold_start) {
+    return {
+      value: "Not enough data",
+      detail: "more comparable profiles needed",
+      fontSize: 36
+    };
+  }
+  return {
+    value: data.percentile_benchmark,
+    detail: `among ${data.percentile_sample_size} peers`,
+    fontSize: 72
+  };
+}
+
 export async function renderSvg(data: CardData, avatarDataUri: string): Promise<string> {
+  const rankCopy = cohortRankCopy(data);
+
   return satori(
     <div
       style={{
@@ -32,9 +53,11 @@ export async function renderSvg(data: CardData, avatarDataUri: string): Promise<
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
-          <div style={{ display: "flex", fontSize: 72, fontWeight: 800, color: "#e2b766" }}>{data.percentile_benchmark}</div>
+          <div style={{ display: "flex", fontSize: rankCopy.fontSize, fontWeight: 800, color: "#e2b766" }}>
+            {rankCopy.value}
+          </div>
           <div style={{ display: "flex", fontSize: 22, color: "#b9b2a6" }}>
-            {data.percentile_cold_start ? "provisional cohort rank" : `among ${data.percentile_sample_size} peers`}
+            {rankCopy.detail}
           </div>
         </div>
       </div>
