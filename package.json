@@ -9,13 +9,16 @@
     "build:cloudflare": "opennextjs-cloudflare build && node scripts/patch-opennext-worker.mjs",
     "deploy": "npm run build:cloudflare && npm run deploy:direct",
     "deploy:direct": "wrangler deploy .open-next/worker.js --assets .open-next/assets --name gitroast-ai-frontend --compatibility-date 2026-07-26 --compatibility-flags nodejs_compat --autoconfig=false --keep-vars",
-    "lint": "next lint",
+    "lint": "eslint . --ext .js,.mjs,.ts,.tsx --max-warnings=0",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "test:frontend": "vitest run",
+    "test:e2e:live": "playwright test",
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
+    "@sentry/browser": "^10.68.0",
     "@tanstack/react-query": "^5.90.11",
+    "lucide-react": "^0.468.0",
     "next": "15.5.21",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -23,6 +26,7 @@
   },
   "devDependencies": {
     "@opennextjs/cloudflare": "1.20.2",
+    "@playwright/test": "^1.62.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
     "@types/node": "^24.10.1",
@@ -39,6 +43,10 @@
     "wrangler": "^4.114.0"
   },
   "overrides": {
+    "@opennextjs/aws": {
+      "minimatch": "10.2.6"
+    },
+    "brace-expansion": "5.0.8",
     "postcss": "8.5.23",
     "sharp": "0.35.3"
   }

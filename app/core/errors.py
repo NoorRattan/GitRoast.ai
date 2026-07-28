@@ -1,9 +1,13 @@
 from typing import Any
+import logging
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+import sentry_sdk
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+logger = logging.getLogger(__name__)
 
 
 class APIError(Exception):
@@ -42,6 +46,18 @@ def install_error_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content=error_payload(code, str(exc.detail)),
             headers=getattr(exc, "headers", None),
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+        sentry_sdk.capture_exception(exc)
+        logger.exception(
+            "unhandled API exception",
+            extra={"method": request.method, "path": request.url.path},
+        )
+        return JSONResponse(
+            status_code=500,
+            content=error_payload("internal_error", "The server could not complete this request."),
         )
 
 

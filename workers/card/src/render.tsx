@@ -33,7 +33,9 @@ export async function renderSvg(data: CardData, avatarDataUri: string): Promise<
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end" }}>
           <div style={{ display: "flex", fontSize: 72, fontWeight: 800, color: "#e2b766" }}>{data.percentile_benchmark}</div>
-          <div style={{ display: "flex", fontSize: 22, color: "#b9b2a6" }}>percentile</div>
+          <div style={{ display: "flex", fontSize: 22, color: "#b9b2a6" }}>
+            {data.percentile_cold_start ? "provisional cohort rank" : `among ${data.percentile_sample_size} peers`}
+          </div>
         </div>
       </div>
       <div style={{ display: "flex", gap: "18px", marginTop: "54px" }}>

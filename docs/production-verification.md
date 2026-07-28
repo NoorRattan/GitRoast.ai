@@ -15,11 +15,15 @@ This file records the current public deployment targets for the repo. Stale cust
 - Root `wrangler.jsonc` deploys the OpenNext frontend Worker to workers.dev with `workers_dev: true`.
 - Frontend deploy command: `npm run deploy`, which runs `npm run build:cloudflare` and `npm run deploy:direct`.
 - Direct frontend deploy command: `npm run deploy:direct`.
-- The frontend same-origin API proxy calls `https://gitroast-ai.onrender.com/api/v1`.
+- Frontend server and browser requests call the Render API directly through `NEXT_PUBLIC_API_BASE_URL`.
 - `render.yaml` defines the Render backend service and keeps secret values out of source with `sync: false`.
 - Backend required env vars are `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ALLOWED_ORIGINS`.
+- Optional centralized error reporting uses `SENTRY_DSN` on Render and `NEXT_PUBLIC_SENTRY_DSN` during the frontend build. Without them, backend exceptions still reach Render logs and frontend failures reach the error boundary and browser console.
 - `ALLOWED_ORIGINS` is scoped to the live Workers.dev frontend origin.
 - The card Worker preview uses `https://gitroast-ai.onrender.com/api/v1` as its backend base URL.
+- Render runs `alembic upgrade head` before Uvicorn starts. Application startup does not mutate schema with `create_all`.
+- Main-branch CI can deploy both Cloudflare Workers when the GitHub `production` environment contains `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+- Render deploys automatically from `main` through `render.yaml`.
 
 ## Cloudflare Build Notes
 
@@ -51,7 +55,7 @@ npm run deploy:direct
 ## Confirmed Platform Limits
 
 - Cloudflare Workers Free plan Worker-size limit is 3 MB after gzip compression.
-- Latest frontend bundle check: `1.11 MiB gzip / 3.00 MiB`.
+- Latest frontend bundle check: `1.47 MiB gzip / 3.00 MiB`.
 - The card Worker preview deploy remains under the Cloudflare Worker gzip limit.
 
 ## Smoke Checklist

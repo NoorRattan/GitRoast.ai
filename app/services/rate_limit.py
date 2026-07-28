@@ -81,9 +81,8 @@ class RateLimiterRegistry:
 
 
 def client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",", 1)[0].strip()
+    # Uvicorn resolves proxy headers only for its configured trusted proxy
+    # addresses. Reading X-Forwarded-For again here would bypass that boundary.
     return request.client.host if request.client else "unknown"
 
 

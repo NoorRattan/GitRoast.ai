@@ -14,6 +14,8 @@ const cardData: CardData = {
   username: "octocat",
   schema_version: 4,
   percentile_benchmark: 82,
+  percentile_sample_size: 42,
+  percentile_cold_start: false,
   avatar_url: "https://avatars.test/octocat.png",
   scores: {
     profile_strength: 71,

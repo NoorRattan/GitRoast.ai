@@ -5,6 +5,8 @@ import pytest
 from app.services.github_client import (
     GitHubGraphQLClient,
     GitHubRateLimitError,
+    PROFILE_QUERY,
+    README_QUERY,
     parse_profile_response,
 )
 
@@ -61,6 +63,21 @@ def test_parse_profile_response_handles_fixture_shapes(load_github_fixture, fixt
     assert all("languages" in repo for repo in profile["repos"])
 
 
+def test_profile_query_and_parser_use_real_github_fields(load_github_fixture):
+    assert "pinnedItems(first: 6, types: REPOSITORY)" in PROFILE_QUERY
+    assert "readmeBlob: object(expression: $expression)" in README_QUERY
+    assert "readmeBlob" not in PROFILE_QUERY
+    assert "isPinned" not in PROFILE_QUERY
+
+    profile = parse_profile_response(load_github_fixture("small_profile.json"))
+    repos = {repo["name"]: repo for repo in profile["repos"]}
+
+    assert repos["api-service"]["is_pinned"] is True
+    assert "Installation" in repos["api-service"]["readme_text"]
+    assert repos["api-service"]["has_coverage_badge"] is True
+    assert repos["infra-playbook"]["is_pinned"] is False
+
+
 async def test_query_user_profile_uses_injected_client_and_caps_whale_repos(load_github_fixture):
     stub = StubAsyncClient([StubResponse(200, load_github_fixture("whale_profile.json"))])
     client = GitHubGraphQLClient("token", stub, max_repos=3)
@@ -69,7 +86,48 @@ async def test_query_user_profile_uses_injected_client_and_caps_whale_repos(load
 
     assert [repo["name"] for repo in profile["repos"]] == ["repo-newest", "repo-2", "repo-3"]
     assert len(stub.calls) == 1
-    assert stub.calls[0][1]["json"]["variables"]["maxRepos"] == 3
+    assert stub.calls[0][1]["json"]["variables"]["repoPageSize"] == 3
+
+
+async def test_query_user_profile_paginates_large_repository_sets():
+    def page(name: str, cursor: str | None, has_next: bool) -> dict:
+        return {
+            "data": {
+                "user": {
+                    "login": "large",
+                    "createdAt": "2020-01-01T00:00:00Z",
+                    "avatarUrl": None,
+                    "pullRequests": {"totalCount": 0},
+                    "pinnedItems": {"nodes": []},
+                    "repositories": {
+                        "pageInfo": {"hasNextPage": has_next, "endCursor": cursor},
+                        "nodes": [
+                            {
+                                "name": name,
+                                "isFork": True,
+                                "isPrivate": False,
+                                "isArchived": False,
+                                "rootTree": {"entries": []},
+                                "languages": {"edges": []},
+                            }
+                        ],
+                    },
+                }
+            }
+        }
+
+    stub = StubAsyncClient(
+        [
+            StubResponse(200, page("newer", "cursor-1", True)),
+            StubResponse(200, page("older", None, False)),
+        ]
+    )
+    client = GitHubGraphQLClient("token", stub, max_repos=2)
+
+    profile = await client.query_user_profile("large")
+
+    assert [repo["name"] for repo in profile["repos"]] == ["newer", "older"]
+    assert stub.calls[1][1]["json"]["variables"]["after"] == "cursor-1"
 
 
 async def test_retry_after_is_respected_before_retry(load_github_fixture):
@@ -107,3 +165,23 @@ async def test_undocumented_secondary_limit_raises_after_third_failure():
 
     assert slept == [1, 2]
     assert len(stub.calls) == 3
+
+
+async def test_transient_server_failure_retries_before_success(load_github_fixture):
+    slept = []
+
+    async def fake_sleep(seconds):
+        slept.append(seconds)
+
+    stub = StubAsyncClient(
+        [
+            StubResponse(502),
+            StubResponse(200, load_github_fixture("small_profile.json")),
+        ]
+    )
+    client = GitHubGraphQLClient("token", stub, sleep=fake_sleep)
+
+    payload = await client.execute("query { viewer { login } }")
+
+    assert payload["data"]["user"]["login"] == "cleanbuilder"
+    assert slept == [1]

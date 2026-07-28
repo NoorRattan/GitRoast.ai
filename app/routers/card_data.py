@@ -33,6 +33,8 @@ async def get_card_data(
         "username": username,
         "schema_version": SCHEMA_VERSION,
         "percentile_benchmark": scores_entry["scores"]["percentile_benchmark"],
+        "percentile_sample_size": scores_entry.get("percentile_sample_size", 0),
+        "percentile_cold_start": scores_entry.get("percentile_cold_start", True),
         "scores": scores_entry["scores"],
         "avatar_url": scores_entry.get("avatar_url"),
     }

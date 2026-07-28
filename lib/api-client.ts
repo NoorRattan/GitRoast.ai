@@ -30,6 +30,8 @@ export type AuditResult = {
     beginnerAccount: boolean;
   };
   findings: Finding[];
+  percentileSampleSize: number;
+  percentileColdStart: boolean;
   roastText: string;
   strengths: string[];
   improvementAreas: string[];
@@ -42,6 +44,8 @@ export type CardData = {
   percentileBenchmark: number;
   scores: Scores;
   avatarUrl: string | null;
+  percentileSampleSize: number;
+  percentileColdStart: boolean;
 };
 
 export type AdminReview = {
@@ -58,8 +62,9 @@ export type AdminCredentials = {
   password: string;
 };
 
-const SERVER_API_BASE_URL = "https://gitroast-ai.onrender.com/api/v1";
-const CLIENT_API_BASE_URL = "/api/v1";
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-ai.onrender.com/api/v1"
+).replace(/\/$/, "");
 const CARD_BASE_URL = process.env.NEXT_PUBLIC_CARD_BASE_URL ?? "https://gitroast-card-preview.jnoorrattan.workers.dev/card";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
@@ -179,8 +184,7 @@ function encodeBasic(value: string): string {
 }
 
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const apiBaseUrl = typeof window === "undefined" ? SERVER_API_BASE_URL : CLIENT_API_BASE_URL;
-  const response = await fetch(`${apiBaseUrl}${path}`, init);
+  const response = await fetch(`${API_BASE_URL}${path}`, init);
   const body = await response.json().catch(() => null) as JsonValue | null;
   if (!response.ok) {
     const errorBody = snakeToCamel<{ error?: { code?: string; message?: string } }>(body ?? {});

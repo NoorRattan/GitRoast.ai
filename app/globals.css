@@ -24,7 +24,8 @@ body {
     linear-gradient(180deg, rgba(105, 197, 184, 0.08), transparent 360px),
     var(--bg);
   color: var(--text);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), Inter, Arial, sans-serif;
+  line-height: 1.5;
 }
 
 a {
@@ -90,6 +91,7 @@ textarea {
   padding: 10px 14px;
   cursor: pointer;
   line-height: 1;
+  gap: 8px;
 }
 
 .button.primary {
@@ -106,6 +108,27 @@ textarea {
 
 .button.ghost {
   background: transparent;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent-2);
+  transform: translateY(-1px);
+}
+
+.button:focus-visible,
+.input:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(105, 197, 184, 0.42);
+  outline-offset: 2px;
+}
+
+.button svg {
+  flex: 0 0 auto;
+}
+
+.icon-button {
+  width: 42px;
+  padding: 0;
 }
 
 .input {
@@ -217,6 +240,146 @@ textarea {
   flex-wrap: wrap;
 }
 
+.audit-title,
+.audit-subtitle,
+.flush {
+  margin: 0;
+}
+
+.audit-subtitle {
+  margin-top: 5px;
+}
+
+.intensity-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.alert-panel,
+.empty-panel,
+.downgrade-notice {
+  padding: 16px;
+}
+
+.alert-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border-color: var(--danger);
+}
+
+.downgrade-notice {
+  border-color: var(--accent);
+}
+
+.audit-aside {
+  align-content: start;
+}
+
+.score-panel {
+  padding: 16px;
+}
+
+.score-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.score-tile {
+  min-height: 100px;
+  border: 1px solid rgba(255, 255, 255, 0.035);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 12px;
+}
+
+.score-label {
+  font-size: 13px;
+}
+
+.score-value {
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 30px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.score-suffix {
+  margin-left: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.percentile-tile {
+  min-width: min(100%, 190px);
+  border-color: rgba(163, 217, 119, 0.2);
+}
+
+.score-context {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.findings-panel {
+  padding: 20px;
+}
+
+.section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.section-heading h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+}
+
+.evidence-count,
+.finding-tag {
+  border: 1px solid rgba(105, 197, 184, 0.34);
+  border-radius: 999px;
+  color: var(--accent-2);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.evidence-count {
+  padding: 5px 9px;
+}
+
+.findings-list {
+  display: grid;
+  gap: 0;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.findings-list li {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+  line-height: 1.45;
+}
+
+.finding-tag {
+  padding: 3px 7px;
+  text-align: center;
+}
+
 .score-visual-loading,
 .score-visual {
   min-height: 340px;
@@ -241,6 +404,12 @@ textarea {
   display: block;
   width: 100%;
   height: 360px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.score-visual canvas:active {
+  cursor: grabbing;
 }
 
 .score-visual-overlay {
@@ -309,6 +478,31 @@ textarea {
   line-height: 1.68;
 }
 
+.opt-out-panel {
+  display: grid;
+  gap: 14px;
+  padding: 20px;
+}
+
+.opt-out-panel h2,
+.opt-out-panel p {
+  margin: 0;
+}
+
+.opt-out-panel p {
+  margin-top: 6px;
+}
+
+.opt-out-panel .button {
+  width: fit-content;
+}
+
+.form-message {
+  margin: 0;
+  color: var(--accent-2);
+  font-size: 14px;
+}
+
 .fact-grid {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
@@ -334,6 +528,118 @@ textarea {
   gap: 5px;
   margin-top: 6px;
   padding-left: 20px;
+}
+
+.share-card,
+.score-fallback {
+  padding: 12px;
+}
+
+.share-card-image,
+.score-fallback-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.score-fallback-image {
+  border: 0;
+}
+
+.share-actions,
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.search-error,
+.error-text {
+  margin: 0;
+  color: var(--danger);
+}
+
+.admin-login {
+  max-width: 460px;
+  padding: 18px;
+}
+
+.admin-form {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-form label,
+.review-item label {
+  display: grid;
+  gap: 5px;
+}
+
+.review-item {
+  padding: 18px;
+}
+
+.review-reason {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.fatal-error {
+  max-width: 680px;
+  padding: clamp(24px, 5vw, 48px);
+}
+
+.fatal-error h1 {
+  margin: 8px 0;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  min-height: 120px;
+  background: var(--panel);
+}
+
+.skeleton::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.06) 48%, transparent 76%);
+  content: "";
+  transform: translateX(-100%);
+  animation: skeleton-sweep 1.4s ease-in-out infinite;
+}
+
+.skeleton-header {
+  min-height: 96px;
+}
+
+.skeleton-scores {
+  min-height: 140px;
+}
+
+.skeleton-findings {
+  min-height: 280px;
+}
+
+.skeleton-roast {
+  min-height: 220px;
+}
+
+.skeleton-visual {
+  min-height: 360px;
+}
+
+.skeleton-card {
+  min-height: 260px;
+}
+
+@keyframes skeleton-sweep {
+  to {
+    transform: translateX(100%);
+  }
 }
 
 .audit-preview {
@@ -457,6 +763,11 @@ textarea {
   .status-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .audit-aside {
+    position: sticky;
+    top: 20px;
+  }
 }
 
 @media (max-width: 620px) {
@@ -486,5 +797,30 @@ textarea {
 
   .status-card strong {
     text-align: left;
+  }
+
+  .alert-panel,
+  .section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .findings-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .finding-tag {
+    width: fit-content;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

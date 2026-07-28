@@ -6,6 +6,8 @@ export type CardData = {
   username: string;
   schema_version: number;
   percentile_benchmark: number;
+  percentile_sample_size: number;
+  percentile_cold_start: boolean;
   scores: {
     profile_strength: number;
     project_depth: number;

@@ -3,10 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Scores } from "@/lib/api-client";
 import ScoreScene from "./ScoreScene";
 
-vi.mock("@react-three/fiber", () => ({
-  Canvas: ({ children }: { children: React.ReactNode }) => <div data-testid="canvas">{children}</div>
-}));
-
 const scores: Scores = {
   profileStrength: 70,
   projectDepth: 60,

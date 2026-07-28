@@ -17,6 +17,7 @@ from app.dependencies import (
 )
 from app.models.api import AuditRequest
 from app.services import cache
+from app.services.benchmark import apply_percentile_benchmark, calculate_percentile_benchmark
 from app.services.github_client import GitHubClientError, GitHubGraphQLClient
 from app.services.rate_limit import RateLimiterRegistry
 from app.services.roast_engine import generate_roast, should_queue_for_review
@@ -56,8 +57,20 @@ async def post_audit(
                 raise APIError(404, "not_found", "GitHub user not found.") from exc
             raise APIError(503, "github_unavailable", "GitHub is temporarily unavailable.") from exc
         scores_entry = score_profile(profile)
+        benchmark = await calculate_percentile_benchmark(
+            db,
+            username=username,
+            scores=scores_entry["scores"],
+            account_age_months=scores_entry["account_age_months"],
+        )
+        apply_percentile_benchmark(scores_entry, benchmark)
         await cache.set_audit_scores(cache_client, username, SCHEMA_VERSION, scores_entry)
-        audit_row = await _insert_audit(db, username, scores_entry["scores"])
+        audit_row = await _insert_audit(
+            db,
+            username,
+            scores_entry["scores"],
+            account_age_months=scores_entry["account_age_months"],
+        )
     else:
         _schedule_stale_refresh_if_needed(request, background_tasks, username, scores_entry)
 
@@ -77,7 +90,12 @@ async def post_audit(
             if audit_row is None:
                 audit_row = await _latest_audit(db, username)
             if audit_row is None:
-                audit_row = await _insert_audit(db, username, scores_entry["scores"])
+                audit_row = await _insert_audit(
+                    db,
+                    username,
+                    scores_entry["scores"],
+                    account_age_months=scores_entry.get("account_age_months"),
+                )
             await _insert_review_queue(db, audit_row.id, roast_entry)
 
     return _audit_response(
@@ -128,7 +146,13 @@ async def _is_opted_out(db: AsyncSession, username: str) -> bool:
     return result.scalar_one_or_none() is not None
 
 
-async def _insert_audit(db: AsyncSession, username: str, scores: dict[str, int]) -> Audit:
+async def _insert_audit(
+    db: AsyncSession,
+    username: str,
+    scores: dict[str, int],
+    *,
+    account_age_months: int | None,
+) -> Audit:
     audit = Audit(
         username=username.lower(),
         profile_strength=scores["profile_strength"],
@@ -136,6 +160,7 @@ async def _insert_audit(db: AsyncSession, username: str, scores: dict[str, int])
         commit_consistency=scores["commit_consistency"],
         tech_diversity=scores["tech_diversity"],
         percentile_benchmark=scores["percentile_benchmark"],
+        account_age_months=account_age_months,
         schema_version=SCHEMA_VERSION,
     )
     db.add(audit)
@@ -187,6 +212,8 @@ def _audit_response(
         "scores": scores_entry["scores"],
         "flags": scores_entry["flags"],
         "findings": scores_entry["findings"],
+        "percentile_sample_size": scores_entry.get("percentile_sample_size", 0),
+        "percentile_cold_start": scores_entry.get("percentile_cold_start", True),
         "roast_text": roast_entry["roast_text"],
         "strengths": roast_entry["strengths"],
         "improvement_areas": roast_entry["improvement_areas"],
@@ -220,8 +247,20 @@ async def _refresh_scores_task(app, username: str, key: str) -> None:
         async with app.state.session_factory() as db:
             profile = await app.state.github_client.query_user_profile(username)
             scores_entry = score_profile(profile)
+            benchmark = await calculate_percentile_benchmark(
+                db,
+                username=username,
+                scores=scores_entry["scores"],
+                account_age_months=scores_entry["account_age_months"],
+            )
+            apply_percentile_benchmark(scores_entry, benchmark)
             await cache.set_audit_scores(app.state.cache_client, username, SCHEMA_VERSION, scores_entry)
-            await _insert_audit(db, username, scores_entry["scores"])
+            await _insert_audit(
+                db,
+                username,
+                scores_entry["scores"],
+                account_age_months=scores_entry["account_age_months"],
+            )
     except Exception:
         logger.exception("stale audit refresh failed", extra={"username": username})
     finally:

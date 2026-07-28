@@ -37,8 +37,10 @@ def score_profile(profile: dict[str, Any], *, now: datetime | None = None) -> di
         "project_depth": _project_depth(metrics),
         "commit_consistency": _commit_consistency(metrics),
         "tech_diversity": _tech_diversity(metrics),
+        # Replaced by the DB-backed cohort benchmark in the request pipeline.
+        # A single-profile empirical distribution has a neutral midpoint rank.
+        "percentile_benchmark": 50,
     }
-    scores["percentile_benchmark"] = _cold_start_percentile(scores)
 
     flags = {
         "green_square_farming": metrics["green_square_farming_ratio"] > GREEN_SQUARE_FARMING_THRESHOLD,
@@ -51,6 +53,9 @@ def score_profile(profile: dict[str, Any], *, now: datetime | None = None) -> di
         "flags": flags,
         "findings": _findings(metrics),
         "avatar_url": profile.get("avatar_url"),
+        "account_age_months": metrics["account_age_months"],
+        "percentile_sample_size": 0,
+        "percentile_cold_start": True,
     }
 
 
@@ -143,10 +148,6 @@ def _tech_diversity(metrics: dict[str, Any]) -> int:
     return _as_score(score)
 
 
-def _cold_start_percentile(scores: dict[str, int]) -> int:
-    return round(sum(scores.values()) / len(scores))
-
-
 def _findings(metrics: dict[str, Any]) -> list[dict[str, Any]]:
     candidates = [
         _finding(FindingMetric.graveyard_ratio, metrics["graveyard_ratio"], "project_depth", f"{metrics['graveyard_ratio']:.0%} of original repos have one commit or less"),
@@ -178,10 +179,11 @@ def _finding(metric: FindingMetric, value: float, contributes_to: str, detail: s
 
 
 def _readme_score(repos: list[dict[str, Any]]) -> float:
-    if not repos:
+    sampled_repos = [repo for repo in repos if repo.get("readme_fetched")]
+    if not sampled_repos:
         return 0.0
     scores = []
-    for repo in repos:
+    for repo in sampled_repos:
         readme = str(repo.get("readme_text", ""))
         lower = readme.lower()
         header_score = sum(1 for token in ("installation", "usage", "demo") if token in lower) / 3

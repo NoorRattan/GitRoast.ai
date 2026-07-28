@@ -2,8 +2,6 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 
 from app.core.config import Settings
-from app.db.models import Base
-
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
@@ -39,13 +37,6 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     if _session_factory is None:
         raise RuntimeError("database session factory has not been initialized")
     return _session_factory
-
-
-async def ensure_db_schema() -> None:
-    if _engine is None:
-        raise RuntimeError("database engine has not been initialized")
-    async with _engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
 
 
 async def close_db() -> None:

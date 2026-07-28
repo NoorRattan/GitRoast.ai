@@ -9,6 +9,7 @@ import { approveReview, fetchAdminReviews, rejectReview } from "@/lib/api-client
 export function AdminPanel(): JSX.Element {
   const [draft, setDraft] = useState<AdminCredentials>({ username: "", password: "" });
   const [credentials, setCredentials] = useState<AdminCredentials | null>(null);
+  const [rejectReasons, setRejectReasons] = useState<Record<number, string>>({});
   const queryClient = useQueryClient();
   const reviews = useQuery({
     queryKey: ["admin-reviews", credentials?.username],
@@ -27,14 +28,14 @@ export function AdminPanel(): JSX.Element {
 
   return (
     <div className="grid">
-      <section className="panel" style={{ padding: 18, maxWidth: 460 }}>
+      <section className="panel admin-login">
         <h1>Review queue</h1>
         <form
           onSubmit={(event) => {
             event.preventDefault();
             setCredentials(draft);
           }}
-          style={{ display: "grid", gap: 10 }}
+          className="admin-form"
         >
           <label>
             <span className="muted">Username</span>
@@ -46,19 +47,39 @@ export function AdminPanel(): JSX.Element {
           </label>
           <button className="button primary" type="submit">Sign in</button>
         </form>
-        {reviews.isError ? <p role="alert" style={{ color: "var(--danger)" }}>Invalid credentials or review service unavailable.</p> : null}
+        {reviews.isError ? <p className="error-text" role="alert">Invalid credentials or review service unavailable.</p> : null}
       </section>
 
       {credentials && reviews.data ? (
         <section className="grid">
           {reviews.data.length === 0 ? <p className="muted">No pending reviews.</p> : null}
           {reviews.data.map((review) => (
-            <article className="panel" key={review.id} style={{ padding: 18 }}>
+            <article className="panel review-item" key={review.id}>
               <h2>Review #{review.id}</h2>
               <p>{review.generatedContent.roastText}</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <label>
+                <span className="muted">Rejection reason</span>
+                <textarea
+                  className="input review-reason"
+                  value={rejectReasons[review.id] ?? ""}
+                  onChange={(event) => setRejectReasons({
+                    ...rejectReasons,
+                    [review.id]: event.target.value
+                  })}
+                  maxLength={1000}
+                  placeholder="Explain what needs to change in the line bank."
+                />
+              </label>
+              <div className="review-actions">
                 <button className="button primary" type="button" onClick={() => approve.mutate(review.id)}>Approve</button>
-                <button className="button" type="button" onClick={() => reject.mutate({ id: review.id, reason: "Needs line-bank edit" })}>Reject</button>
+                <button
+                  className="button"
+                  type="button"
+                  disabled={!rejectReasons[review.id]?.trim() || reject.isPending}
+                  onClick={() => reject.mutate({ id: review.id, reason: rejectReasons[review.id].trim() })}
+                >
+                  Reject
+                </button>
               </div>
             </article>
           ))}

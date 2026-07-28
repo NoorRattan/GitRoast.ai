@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuditClient } from "./AuditClient";
 import type { AuditResult } from "@/lib/api-client";
 
@@ -33,6 +33,8 @@ function audit(overrides: Partial<AuditResult> = {}): AuditResult {
     scores: { profileStrength: 70, projectDepth: 60, commitConsistency: 50, techDiversity: 80, percentileBenchmark: 65 },
     flags: { greenSquareFarming: false, beginnerAccount: true },
     findings: [{ metric: "fork_ratio", detail: "many forks", value: 0.5, contributesTo: "profileStrength" }],
+    percentileSampleSize: 8,
+    percentileColdStart: true,
     roastText: "Generated roast",
     strengths: ["Real work", "Clear motion", "Useful stack"],
     improvementAreas: ["Pin better repos", "Add tests", "Write READMEs"],
@@ -42,6 +44,10 @@ function audit(overrides: Partial<AuditResult> = {}): AuditResult {
 }
 
 describe("AuditClient", () => {
+  beforeEach(() => {
+    requestAudit.mockReset();
+  });
+
   it("renders the lightweight shell and triggers client-side POST when no cached audit exists", async () => {
     requestAudit.mockResolvedValueOnce(audit({ intensityDowngraded: false, roastIntensityApplied: "medium", roastIntensityRequested: "medium" }));
 
@@ -56,5 +62,27 @@ describe("AuditClient", () => {
     renderWithQuery(<AuditClient username="newstarter" initialAudit={audit()} />);
 
     expect(screen.getByText(/capped at Medium/)).toBeInTheDocument();
+    expect(screen.getByText("many forks")).toBeInTheDocument();
+    expect(screen.getByText(/8 comparable profiles/)).toBeInTheDocument();
+  });
+
+  it("requests a new roast when intensity changes from a server-provided audit", async () => {
+    const initial = audit({
+      roastIntensityRequested: "medium",
+      roastIntensityApplied: "medium",
+      intensityDowngraded: false
+    });
+    requestAudit.mockResolvedValueOnce(audit({
+      roastIntensityRequested: "brutal",
+      roastIntensityApplied: "brutal",
+      intensityDowngraded: false,
+      roastText: "Brutal refresh"
+    }));
+
+    renderWithQuery(<AuditClient username="newstarter" initialAudit={initial} />);
+    fireEvent.click(screen.getByRole("tab", { name: "brutal" }));
+
+    await waitFor(() => expect(requestAudit).toHaveBeenCalledWith("newstarter", "brutal"));
+    expect(await screen.findByText("Brutal refresh")).toBeInTheDocument();
   });
 });

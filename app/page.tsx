@@ -7,7 +7,12 @@ const scoreSignals = [
   ["Stack", "91", "Language and tooling breadth"]
 ];
 
-export default function HomePage(): JSX.Element {
+export default async function HomePage({
+  searchParams
+}: {
+  searchParams: Promise<{ error?: string }>;
+}): Promise<JSX.Element> {
+  const { error } = await searchParams;
   return (
     <main className="page home-page">
       <div className="shell">
@@ -26,7 +31,7 @@ export default function HomePage(): JSX.Element {
               GitRoast turns a GitHub profile link into a scored audit, blunt local roast, improvement roadmap, and share card.
             </p>
 
-            <form action="/search" className="audit-form">
+            <form action="/search" className="audit-form" id="profile-search">
               <label htmlFor="username" className="sr-only">
                 GitHub profile link
               </label>
@@ -42,6 +47,11 @@ export default function HomePage(): JSX.Element {
               />
               <button className="button primary hero-button" type="submit">Audit profile</button>
             </form>
+            {error === "invalid-profile" ? (
+              <p className="search-error" role="alert">
+                Enter a GitHub username or a profile link such as https://github.com/your-handle.
+              </p>
+            ) : null}
           </div>
 
           <aside className="audit-preview" aria-label="Audit preview">

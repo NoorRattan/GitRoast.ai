@@ -5,7 +5,9 @@
       "createdAt": "2022-01-15T00:00:00Z",
       "avatarUrl": "https://avatars.githubusercontent.com/u/1?v=4",
       "external_pr_count": 4,
-      "pullRequests": { "totalCount": 4 },
+      "pullRequests": {
+        "totalCount": 4
+      },
       "repositories": {
         "nodes": [
           {
@@ -15,15 +17,24 @@
             "diskUsage": 1800,
             "pushedAt": "2026-07-12T12:00:00Z",
             "stargazerCount": 42,
-            "isPinned": true,
             "isArchived": false,
-            "licenseInfo": { "key": "mit" },
-            "readme_text": "# API Service\n\n![demo](demo.png)\n\n## Installation\n\nRun the app.\n\n## Usage\n\nCall the API.\n\n## Demo\n\n![badge](https://img.shields.io/badge/tests-passing-green)",
-            "has_coverage_badge": true,
+            "licenseInfo": {
+              "key": "mit"
+            },
             "languages": {
               "edges": [
-                { "size": 95000, "node": { "name": "Python" } },
-                { "size": 11000, "node": { "name": "Shell" } }
+                {
+                  "size": 95000,
+                  "node": {
+                    "name": "Python"
+                  }
+                },
+                {
+                  "size": 11000,
+                  "node": {
+                    "name": "Shell"
+                  }
+                }
               ]
             },
             "defaultBranchRef": {
@@ -31,19 +42,40 @@
                 "history": {
                   "totalCount": 64,
                   "nodes": [
-                    { "committedDate": "2026-07-10T10:00:00Z", "messageHeadline": "Add async cache integration" },
-                    { "committedDate": "2026-07-03T10:00:00Z", "messageHeadline": "Tighten API validation rules" },
-                    { "committedDate": "2026-06-26T10:00:00Z", "messageHeadline": "Improve retry handling" }
+                    {
+                      "committedDate": "2026-07-10T10:00:00Z",
+                      "messageHeadline": "Add async cache integration"
+                    },
+                    {
+                      "committedDate": "2026-07-03T10:00:00Z",
+                      "messageHeadline": "Tighten API validation rules"
+                    },
+                    {
+                      "committedDate": "2026-06-26T10:00:00Z",
+                      "messageHeadline": "Improve retry handling"
+                    }
                   ]
                 }
               }
             },
             "rootTree": {
               "entries": [
-                { "name": ".github", "type": "tree" },
-                { "name": "tests", "type": "tree" },
-                { "name": "README.md", "type": "blob" }
+                {
+                  "name": ".github",
+                  "type": "tree"
+                },
+                {
+                  "name": "tests",
+                  "type": "tree"
+                },
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
               ]
+            },
+            "readmeBlob": {
+              "text": "# API Service\n\n![demo](demo.png)\n\n## Installation\n\nRun the app.\n\n## Usage\n\nCall the API.\n\n## Demo\n\n![coverage](https://codecov.io/gh/example/api-service/branch/main/graph/badge.svg)"
             }
           },
           {
@@ -53,15 +85,24 @@
             "diskUsage": 1450,
             "pushedAt": "2026-07-08T08:00:00Z",
             "stargazerCount": 30,
-            "isPinned": true,
             "isArchived": false,
-            "licenseInfo": { "key": "apache-2.0" },
-            "readme_text": "# Web Client\n\n## Installation\n\nnpm install\n\n## Usage\n\nnpm run dev\n\n![demo](screen.gif)\n\n![badge](https://img.shields.io/badge/build-passing-green)",
-            "has_coverage_badge": true,
+            "licenseInfo": {
+              "key": "apache-2.0"
+            },
             "languages": {
               "edges": [
-                { "size": 120000, "node": { "name": "TypeScript" } },
-                { "size": 18000, "node": { "name": "CSS" } }
+                {
+                  "size": 120000,
+                  "node": {
+                    "name": "TypeScript"
+                  }
+                },
+                {
+                  "size": 18000,
+                  "node": {
+                    "name": "CSS"
+                  }
+                }
               ]
             },
             "defaultBranchRef": {
@@ -69,18 +110,36 @@
                 "history": {
                   "totalCount": 58,
                   "nodes": [
-                    { "committedDate": "2026-07-01T10:00:00Z", "messageHeadline": "Build result shell view" },
-                    { "committedDate": "2026-06-20T10:00:00Z", "messageHeadline": "Add responsive score cards" }
+                    {
+                      "committedDate": "2026-07-01T10:00:00Z",
+                      "messageHeadline": "Build result shell view"
+                    },
+                    {
+                      "committedDate": "2026-06-20T10:00:00Z",
+                      "messageHeadline": "Add responsive score cards"
+                    }
                   ]
                 }
               }
             },
             "rootTree": {
               "entries": [
-                { "name": ".github", "type": "tree" },
-                { "name": "__tests__", "type": "tree" },
-                { "name": "README.md", "type": "blob" }
+                {
+                  "name": ".github",
+                  "type": "tree"
+                },
+                {
+                  "name": "__tests__",
+                  "type": "tree"
+                },
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
               ]
+            },
+            "readmeBlob": {
+              "text": "# Web Client\n\n## Installation\n\nnpm install\n\n## Usage\n\nnpm run dev\n\n![demo](screen.gif)\n\n![badge](https://img.shields.io/badge/build-passing-green)"
             }
           },
           {
@@ -90,15 +149,24 @@
             "diskUsage": 720,
             "pushedAt": "2026-06-15T08:00:00Z",
             "stargazerCount": 12,
-            "isPinned": false,
             "isArchived": false,
-            "licenseInfo": { "key": "mit" },
-            "readme_text": "# Infra Playbook\n\n## Installation\n\n## Usage\n\nTerraform modules and scripts.",
-            "has_coverage_badge": false,
+            "licenseInfo": {
+              "key": "mit"
+            },
             "languages": {
               "edges": [
-                { "size": 30000, "node": { "name": "HCL" } },
-                { "size": 9000, "node": { "name": "Shell" } }
+                {
+                  "size": 30000,
+                  "node": {
+                    "name": "HCL"
+                  }
+                },
+                {
+                  "size": 9000,
+                  "node": {
+                    "name": "Shell"
+                  }
+                }
               ]
             },
             "defaultBranchRef": {
@@ -106,16 +174,28 @@
                 "history": {
                   "totalCount": 22,
                   "nodes": [
-                    { "committedDate": "2026-06-15T10:00:00Z", "messageHeadline": "Document rollout checks" }
+                    {
+                      "committedDate": "2026-06-15T10:00:00Z",
+                      "messageHeadline": "Document rollout checks"
+                    }
                   ]
                 }
               }
             },
             "rootTree": {
               "entries": [
-                { "name": ".github", "type": "tree" },
-                { "name": "README.md", "type": "blob" }
+                {
+                  "name": ".github",
+                  "type": "tree"
+                },
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
               ]
+            },
+            "readmeBlob": {
+              "text": "# Infra Playbook\n\n## Installation\n\n## Usage\n\nTerraform modules and scripts."
             }
           },
           {
@@ -125,12 +205,45 @@
             "diskUsage": 600,
             "pushedAt": "2026-04-01T08:00:00Z",
             "stargazerCount": 0,
-            "isPinned": false,
             "isArchived": false,
             "licenseInfo": null,
-            "languages": { "edges": [{ "size": 20000, "node": { "name": "Go" } }] },
-            "defaultBranchRef": { "target": { "history": { "totalCount": 6, "nodes": [] } } },
-            "rootTree": { "entries": [{ "name": "README.md", "type": "blob" }] }
+            "languages": {
+              "edges": [
+                {
+                  "size": 20000,
+                  "node": {
+                    "name": "Go"
+                  }
+                }
+              ]
+            },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 6,
+                  "nodes": []
+                }
+              }
+            },
+            "rootTree": {
+              "entries": [
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
+              ]
+            },
+            "readmeBlob": null
+          }
+        ]
+      },
+      "pinnedItems": {
+        "nodes": [
+          {
+            "name": "api-service"
+          },
+          {
+            "name": "web-client"
           }
         ]
       }

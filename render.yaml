@@ -6,7 +6,7 @@ services:
     branch: main
     plan: free
     buildCommand: pip install -e .
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips=127.0.0.1
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -23,6 +23,8 @@ services:
       - key: ADMIN_USERNAME
         sync: false
       - key: ADMIN_PASSWORD
+        sync: false
+      - key: SENTRY_DSN
         sync: false
       - key: ALLOWED_ORIGINS
         value: https://gitroast-ai-frontend.jnoorrattan.workers.dev

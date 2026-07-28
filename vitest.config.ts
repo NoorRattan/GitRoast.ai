@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./vitest.setup.ts"],
-    exclude: [...configDefaults.exclude, "workers/card/**"]
+    exclude: [...configDefaults.exclude, "workers/card/**", "e2e/**"]
   },
   resolve: {
     alias: {

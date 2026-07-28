@@ -1,0 +1,6 @@
+.next/
+.open-next/
+.wrangler/
+dist/
+node_modules/
+workers/card/

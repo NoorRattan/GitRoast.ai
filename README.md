@@ -2,6 +2,8 @@
 
 Rule-based GitHub profile audits with deterministic scoring, local roast generation, and shareable profile cards.
 
+GitRoast fetches real README, pinned-repository, language, commit, license, and repository-structure signals from GitHub. Each score is paired with visible evidence, and the cohort rank is calculated from persisted audits with an explicit cold-start sample count.
+
 ## Links
 
 | Service | Link | Verified status |
@@ -18,3 +20,6 @@ Rule-based GitHub profile audits with deterministic scoring, local roast generat
 - The Cloudflare frontend dashboard should use `npm run build:cloudflare` and `npm run deploy:direct`.
 - The frontend is intentionally deployed on workers.dev; no frontend custom domain is configured in this repo.
 - The backend and full end-to-end audit flow still depend on a live Render service with production environment variables.
+- Copy `.env.example` for the complete local/frontend/backend variable contract; never commit real values.
+- Render applies Alembic migrations before startup. Cloudflare deploys can run from CI after the required GitHub production secrets are configured.
+- Current intentional architecture decisions are documented in `docs/architecture-decisions.md`.

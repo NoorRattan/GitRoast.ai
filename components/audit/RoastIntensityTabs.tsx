@@ -15,7 +15,7 @@ export function RoastIntensityTabs({
   disabled?: boolean;
 }): JSX.Element {
   return (
-    <div role="tablist" aria-label="Roast intensity" style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+    <div className="intensity-tabs" role="tablist" aria-label="Roast intensity">
       {intensities.map((intensity) => (
         <button
           key={intensity}

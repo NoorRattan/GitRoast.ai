@@ -306,6 +306,8 @@ def test_card_data_reads_scores_only(route_harness, load_github_fixture):
         "username": "cleanbuilder",
         "schema_version": SCHEMA_VERSION,
         "percentile_benchmark": scores["scores"]["percentile_benchmark"],
+        "percentile_sample_size": scores["percentile_sample_size"],
+        "percentile_cold_start": scores["percentile_cold_start"],
         "scores": scores["scores"],
         "avatar_url": scores["avatar_url"],
     }

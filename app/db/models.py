@@ -31,6 +31,7 @@ class Audit(Base):
     commit_consistency: Mapped[int] = mapped_column(Integer, nullable=False)
     tech_diversity: Mapped[int] = mapped_column(Integer, nullable=False)
     percentile_benchmark: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_age_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=SCHEMA_VERSION)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 

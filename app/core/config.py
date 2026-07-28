@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     admin_username: str = Field(alias="ADMIN_USERNAME")
     admin_password: str = Field(alias="ADMIN_PASSWORD")
     allowed_origins: str = Field(alias="ALLOWED_ORIGINS")
+    sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")
 
     model_config = SettingsConfigDict(
         env_file=".env",

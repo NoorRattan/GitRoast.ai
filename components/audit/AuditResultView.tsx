@@ -1,5 +1,7 @@
 import type { AuditResult } from "@/lib/api-client";
 import { ShareCard } from "@/components/card/ShareCard";
+import { FindingsList } from "./FindingsList";
+import { OptOutControl } from "./OptOutControl";
 import { ScoreGrid } from "./ScoreGrid";
 
 type AuditResultViewProps = {
@@ -13,11 +15,16 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
     <div className="grid two">
       <div className="grid">
         {audit.intensityDowngraded && audit.flags.beginnerAccount ? (
-          <div className="panel" role="status" style={{ padding: 14, borderColor: "var(--accent)" }}>
+          <div className="panel downgrade-notice" role="status">
             Brutal and Hell are capped at Medium for beginner or low-activity accounts.
           </div>
         ) : null}
-        <ScoreGrid scores={audit.scores} />
+        <ScoreGrid
+          scores={audit.scores}
+          percentileSampleSize={audit.percentileSampleSize}
+          percentileColdStart={audit.percentileColdStart}
+        />
+        <FindingsList findings={audit.findings} />
         <section className="panel roast-panel" aria-label="Roast verdict">
           <p>{audit.roastText}</p>
         </section>
@@ -38,8 +45,9 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
             ))}
           </ol>
         </section>
+        <OptOutControl username={audit.username} />
       </div>
-      <aside className="grid" style={{ alignContent: "start" }}>
+      <aside className="grid audit-aside">
         <noscript>
           <ShareCard username={audit.username} schemaVersion={audit.schemaVersion} />
         </noscript>

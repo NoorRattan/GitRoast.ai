@@ -18,6 +18,8 @@ const auditPayload = {
   },
   flags: { green_square_farming: false, beginner_account: true },
   findings: [{ metric: "fork_ratio", detail: "many forks", value: 0.5, contributes_to: "profile_strength" }],
+  percentile_sample_size: 12,
+  percentile_cold_start: true,
   roast_text: "text",
   strengths: ["a", "b", "c"],
   improvement_areas: ["x", "y", "z"],

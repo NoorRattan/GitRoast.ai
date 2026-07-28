@@ -47,4 +47,40 @@ describe("AdminPanel", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid credentials");
   });
+
+  it("submits the reviewer's own rejection reason", async () => {
+    fetchAdminReviews.mockResolvedValueOnce([
+      {
+        id: 9,
+        auditId: 3,
+        generatedContent: {
+          roastText: "Too generic",
+          strengths: ["a", "b", "c"],
+          improvementAreas: ["x", "y", "z"],
+          roadmap: []
+        },
+        reviewStatus: "pending",
+        reason: null,
+        createdAt: "2026-07-28T00:00:00Z"
+      }
+    ]);
+    rejectReview.mockResolvedValueOnce(undefined);
+
+    renderPanel();
+    fireEvent.change(screen.getByLabelText(/Username/), { target: { value: "admin" } });
+    fireEvent.change(screen.getByLabelText(/Password/), { target: { value: "secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await screen.findByText("Review #9");
+
+    fireEvent.change(screen.getByLabelText("Rejection reason"), {
+      target: { value: "The evidence line repeats the verdict." }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
+
+    await waitFor(() => expect(rejectReview).toHaveBeenCalledWith(
+      { username: "admin", password: "secret" },
+      9,
+      "The evidence line repeats the verdict."
+    ));
+  });
 });

@@ -84,6 +84,45 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         group.add(mesh);
         return { mesh, score };
       });
+      let dragging = false;
+      let pointerX = 0;
+      let pointerY = 0;
+      let dragRotationX = 0;
+      let dragRotationY = 0;
+      let hoverRotationX = 0;
+      let hoverRotationY = 0;
+      const startedAt = performance.now();
+
+      const pointerDown = (event: PointerEvent) => {
+        dragging = true;
+        pointerX = event.clientX;
+        pointerY = event.clientY;
+        canvas.setPointerCapture(event.pointerId);
+      };
+      const pointerMove = (event: PointerEvent) => {
+        if (dragging) {
+          dragRotationY += (event.clientX - pointerX) * 0.008;
+          dragRotationX += (event.clientY - pointerY) * 0.006;
+          pointerX = event.clientX;
+          pointerY = event.clientY;
+          return;
+        }
+        const rect = canvas.getBoundingClientRect();
+        hoverRotationY = ((event.clientX - rect.left) / rect.width - 0.5) * 0.18;
+        hoverRotationX = ((event.clientY - rect.top) / rect.height - 0.5) * 0.12;
+      };
+      const pointerUp = (event: PointerEvent) => {
+        dragging = false;
+        if (canvas.hasPointerCapture(event.pointerId)) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+      };
+      const pointerLeave = () => {
+        if (!dragging) {
+          hoverRotationX = 0;
+          hoverRotationY = 0;
+        }
+      };
 
       const resize = () => {
         const rect = canvas.getBoundingClientRect();
@@ -97,12 +136,18 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
 
       const animate = () => {
         const now = performance.now() / 1000;
-        group.rotation.y = Math.sin(now * 0.38) * 0.17;
-        group.rotation.x = Math.sin(now * 0.31) * 0.08;
+        group.rotation.y += (
+          Math.sin(now * 0.38) * 0.12 + dragRotationY + hoverRotationY - group.rotation.y
+        ) * 0.08;
+        group.rotation.x += (
+          Math.sin(now * 0.31) * 0.06 + dragRotationX + hoverRotationX - group.rotation.x
+        ) * 0.08;
         core.rotation.x += 0.012;
         core.rotation.y += 0.018;
         ring.rotation.z -= 0.014;
         bars.forEach(({ mesh, score }, index) => {
+          const entrance = Math.min(1, Math.max(0.001, (performance.now() - startedAt - index * 90) / 520));
+          mesh.scale.x = 1 - Math.pow(1 - entrance, 3);
           mesh.position.z = Math.sin(now * 1.15 + index) * 0.08 + score / 450;
         });
         renderer.render(scene, camera);
@@ -111,11 +156,21 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
 
       resize();
       window.addEventListener("resize", resize);
+      canvas.addEventListener("pointerdown", pointerDown);
+      canvas.addEventListener("pointermove", pointerMove);
+      canvas.addEventListener("pointerup", pointerUp);
+      canvas.addEventListener("pointercancel", pointerUp);
+      canvas.addEventListener("pointerleave", pointerLeave);
       animate();
 
       cleanup = () => {
         window.cancelAnimationFrame(frame);
         window.removeEventListener("resize", resize);
+        canvas.removeEventListener("pointerdown", pointerDown);
+        canvas.removeEventListener("pointermove", pointerMove);
+        canvas.removeEventListener("pointerup", pointerUp);
+        canvas.removeEventListener("pointercancel", pointerUp);
+        canvas.removeEventListener("pointerleave", pointerLeave);
         renderer.dispose();
         bars.forEach(({ mesh }) => {
           mesh.geometry.dispose();
@@ -162,8 +217,8 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
 
 function FallbackImage({ username, imageUrl }: { username: string; imageUrl: string }): JSX.Element {
   return (
-    <section className="panel" data-testid="score-fallback" style={{ padding: 12 }}>
-      <Image src={imageUrl} alt={`${username} static audit card`} width={1200} height={630} unoptimized style={{ width: "100%", height: "auto", borderRadius: 8 }} />
+    <section className="panel score-fallback" data-testid="score-fallback">
+      <Image className="score-fallback-image" src={imageUrl} alt={`${username} static audit card`} width={1200} height={630} unoptimized />
     </section>
   );
 }

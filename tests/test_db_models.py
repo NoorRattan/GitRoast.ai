@@ -45,6 +45,7 @@ async def test_db_schema_creates_expected_tables_and_columns():
         "commit_consistency",
         "tech_diversity",
         "percentile_benchmark",
+        "account_age_months",
         "schema_version",
         "created_at",
     } <= tables["audits"]

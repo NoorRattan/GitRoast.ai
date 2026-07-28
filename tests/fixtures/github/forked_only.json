@@ -5,7 +5,9 @@
       "createdAt": "2020-01-01T00:00:00Z",
       "avatarUrl": "https://avatars.githubusercontent.com/u/3?v=4",
       "external_pr_count": 2,
-      "pullRequests": { "totalCount": 2 },
+      "pullRequests": {
+        "totalCount": 2
+      },
       "repositories": {
         "nodes": [
           {
@@ -15,12 +17,35 @@
             "diskUsage": 4500000,
             "pushedAt": "2026-07-01T12:00:00Z",
             "stargazerCount": 0,
-            "isPinned": true,
             "isArchived": false,
             "licenseInfo": null,
-            "languages": { "edges": [{ "size": 10000, "node": { "name": "C" } }] },
-            "defaultBranchRef": { "target": { "history": { "totalCount": 0, "nodes": [] } } },
-            "rootTree": { "entries": [{ "name": "README.md", "type": "blob" }] }
+            "languages": {
+              "edges": [
+                {
+                  "size": 10000,
+                  "node": {
+                    "name": "C"
+                  }
+                }
+              ]
+            },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 0,
+                  "nodes": []
+                }
+              }
+            },
+            "rootTree": {
+              "entries": [
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
+              ]
+            },
+            "readmeBlob": null
           },
           {
             "name": "react",
@@ -29,12 +54,35 @@
             "diskUsage": 600000,
             "pushedAt": "2026-06-20T12:00:00Z",
             "stargazerCount": 0,
-            "isPinned": false,
             "isArchived": false,
             "licenseInfo": null,
-            "languages": { "edges": [{ "size": 10000, "node": { "name": "JavaScript" } }] },
-            "defaultBranchRef": { "target": { "history": { "totalCount": 0, "nodes": [] } } },
-            "rootTree": { "entries": [{ "name": "README.md", "type": "blob" }] }
+            "languages": {
+              "edges": [
+                {
+                  "size": 10000,
+                  "node": {
+                    "name": "JavaScript"
+                  }
+                }
+              ]
+            },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 0,
+                  "nodes": []
+                }
+              }
+            },
+            "rootTree": {
+              "entries": [
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
+              ]
+            },
+            "readmeBlob": null
           },
           {
             "name": "cpython",
@@ -43,12 +91,42 @@
             "diskUsage": 900000,
             "pushedAt": "2026-05-20T12:00:00Z",
             "stargazerCount": 0,
-            "isPinned": false,
             "isArchived": false,
             "licenseInfo": null,
-            "languages": { "edges": [{ "size": 10000, "node": { "name": "Python" } }] },
-            "defaultBranchRef": { "target": { "history": { "totalCount": 0, "nodes": [] } } },
-            "rootTree": { "entries": [{ "name": "README.md", "type": "blob" }] }
+            "languages": {
+              "edges": [
+                {
+                  "size": 10000,
+                  "node": {
+                    "name": "Python"
+                  }
+                }
+              ]
+            },
+            "defaultBranchRef": {
+              "target": {
+                "history": {
+                  "totalCount": 0,
+                  "nodes": []
+                }
+              }
+            },
+            "rootTree": {
+              "entries": [
+                {
+                  "name": "README.md",
+                  "type": "blob"
+                }
+              ]
+            },
+            "readmeBlob": null
+          }
+        ]
+      },
+      "pinnedItems": {
+        "nodes": [
+          {
+            "name": "linux"
           }
         ]
       }

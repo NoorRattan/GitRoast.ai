@@ -23,11 +23,13 @@ class GitHubRateLimitError(GitHubClientError):
 class GitHubProfileRequest:
     username: str
     max_repos: int = 50
+    repo_page_size: int = 20
     language_limit: int = 10
+    readme_limit: int = 12
 
 
 PROFILE_QUERY = """
-query GitRoastProfile($login: String!, $maxRepos: Int!, $languageLimit: Int!) {
+query GitRoastProfile($login: String!, $repoPageSize: Int!, $after: String, $languageLimit: Int!) {
   user(login: $login) {
     login
     createdAt
@@ -35,11 +37,23 @@ query GitRoastProfile($login: String!, $maxRepos: Int!, $languageLimit: Int!) {
     pullRequests(first: 1) {
       totalCount
     }
+    pinnedItems(first: 6, types: REPOSITORY) {
+      nodes {
+        ... on Repository {
+          name
+        }
+      }
+    }
     repositories(
-      first: $maxRepos
+      first: $repoPageSize
+      after: $after
       ownerAffiliations: OWNER
       orderBy: {field: PUSHED_AT, direction: DESC}
     ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
       nodes {
         name
         isFork
@@ -86,6 +100,18 @@ query GitRoastProfile($login: String!, $maxRepos: Int!, $languageLimit: Int!) {
 }
 """
 
+README_QUERY = """
+query GitRoastReadme($login: String!, $repo: String!, $expression: String!) {
+  repository(owner: $login, name: $repo) {
+    readmeBlob: object(expression: $expression) {
+      ... on Blob {
+        text
+      }
+    }
+  }
+}
+"""
+
 
 class GitHubGraphQLClient:
     def __init__(
@@ -104,15 +130,63 @@ class GitHubGraphQLClient:
 
     async def query_user_profile(self, username: str, *, max_repos: int | None = None) -> dict[str, Any]:
         request = GitHubProfileRequest(username=username, max_repos=max_repos or self._max_repos)
-        payload = await self.execute(
-            PROFILE_QUERY,
-            {
-                "login": request.username,
-                "maxRepos": request.max_repos,
-                "languageLimit": request.language_limit,
-            },
-        )
-        return parse_profile_response(payload, max_repos=request.max_repos)
+        merged_user: dict[str, Any] | None = None
+        after: str | None = None
+        remaining = request.max_repos
+        while remaining > 0:
+            page_size = min(request.repo_page_size, remaining)
+            payload = await self.execute(
+                PROFILE_QUERY,
+                {
+                    "login": request.username,
+                    "repoPageSize": page_size,
+                    "after": after,
+                    "languageLimit": request.language_limit,
+                },
+            )
+            user = payload.get("data", {}).get("user")
+            if user is None:
+                raise GitHubClientError("GitHub user not found", status_code=404)
+            repositories = user.get("repositories") or {}
+            nodes = repositories.get("nodes") or []
+            if merged_user is None:
+                merged_user = {**user, "repositories": {"nodes": list(nodes)}}
+            else:
+                merged_user["repositories"]["nodes"].extend(nodes)
+            remaining -= len(nodes)
+            page_info = repositories.get("pageInfo") or {}
+            after = page_info.get("endCursor")
+            if not nodes or not page_info.get("hasNextPage") or not after:
+                break
+
+        profile = parse_profile_response({"data": {"user": merged_user}}, max_repos=request.max_repos)
+        await self._hydrate_readmes(profile, request)
+        return profile
+
+    async def _hydrate_readmes(self, profile: dict[str, Any], request: GitHubProfileRequest) -> None:
+        candidates = [
+            repo
+            for repo in profile["repos"]
+            if not repo["is_fork"] and not repo["readme_fetched"] and repo.get("name")
+        ][: request.readme_limit]
+        for repo in candidates:
+            readme_path = _readme_path(repo)
+            if readme_path is None:
+                repo["readme_fetched"] = True
+                continue
+            payload = await self.execute(
+                README_QUERY,
+                {
+                    "login": request.username,
+                    "repo": repo["name"],
+                    "expression": f"HEAD:{readme_path}",
+                },
+            )
+            repository = payload.get("data", {}).get("repository") or {}
+            readme_text = str((repository.get("readmeBlob") or {}).get("text") or "")
+            repo["readme_text"] = readme_text
+            repo["readme_fetched"] = True
+            repo["has_coverage_badge"] = _has_coverage_badge(readme_text)
 
     async def execute(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
         async with self._semaphore:
@@ -120,6 +194,7 @@ class GitHubGraphQLClient:
 
     async def _execute_serialized(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         undocumented_failures = 0
+        server_failures = 0
         while True:
             response = await self._http_client.post(
                 GITHUB_GRAPHQL_URL,
@@ -146,6 +221,17 @@ class GitHubGraphQLClient:
                 await self._sleep(min(2 ** (undocumented_failures - 1), 8))
                 continue
 
+            if response.status_code >= 500:
+                server_failures += 1
+                if server_failures >= 3:
+                    raise GitHubClientError(
+                        f"GitHub GraphQL request failed with status {response.status_code}",
+                        status_code=response.status_code,
+                        retryable=True,
+                    )
+                await self._sleep(min(2 ** (server_failures - 1), 4))
+                continue
+
             if response.status_code >= 400:
                 raise GitHubClientError(
                     f"GitHub GraphQL request failed with status {response.status_code}",
@@ -165,8 +251,13 @@ def parse_profile_response(payload: dict[str, Any], *, max_repos: int | None = N
     if user is None:
         raise GitHubClientError("GitHub user not found", status_code=404)
 
+    pinned_names = {
+        node.get("name")
+        for node in (user.get("pinnedItems", {}).get("nodes", []) or [])
+        if node and node.get("name")
+    }
     raw_repos = user.get("repositories", {}).get("nodes", []) or []
-    repos = [_parse_repo(repo) for repo in raw_repos]
+    repos = [_parse_repo(repo, pinned_names=pinned_names) for repo in raw_repos]
     repos.sort(key=lambda repo: repo.get("pushed_at") or "", reverse=True)
     if max_repos is not None:
         repos = repos[:max_repos]
@@ -180,12 +271,14 @@ def parse_profile_response(payload: dict[str, Any], *, max_repos: int | None = N
     }
 
 
-def _parse_repo(repo: dict[str, Any]) -> dict[str, Any]:
+def _parse_repo(repo: dict[str, Any], *, pinned_names: set[str]) -> dict[str, Any]:
     branch_target = ((repo.get("defaultBranchRef") or {}).get("target") or {})
     history = branch_target.get("history") or {}
     commit_nodes = history.get("nodes") or []
     root_tree = repo.get("rootTree") or repo.get("object") or {}
     entries = root_tree.get("entries") or []
+    readme_fetched = "readmeBlob" in repo
+    readme_text = str((repo.get("readmeBlob") or {}).get("text") or "")
 
     return {
         "name": repo.get("name"),
@@ -195,7 +288,7 @@ def _parse_repo(repo: dict[str, Any]) -> dict[str, Any]:
         "disk_usage": int(repo.get("diskUsage") or 0),
         "pushed_at": repo.get("pushedAt"),
         "stargazer_count": int(repo.get("stargazerCount") or 0),
-        "is_pinned": bool(repo.get("isPinned", repo.get("is_pinned", False))),
+        "is_pinned": repo.get("name") in pinned_names,
         "has_license": bool(repo.get("licenseInfo") or repo.get("has_license")),
         "languages": {
             edge.get("node", {}).get("name"): int(edge.get("size") or 0)
@@ -215,6 +308,20 @@ def _parse_repo(repo: dict[str, Any]) -> dict[str, Any]:
         ]
         or list(repo.get("commit_dates", [])),
         "root_entries": [{"name": entry.get("name"), "type": entry.get("type")} for entry in entries],
-        "readme_text": repo.get("readme_text", ""),
-        "has_coverage_badge": bool(repo.get("has_coverage_badge", False)),
+        "readme_text": readme_text,
+        "readme_fetched": readme_fetched,
+        "has_coverage_badge": _has_coverage_badge(readme_text),
     }
+
+
+def _has_coverage_badge(readme_text: str) -> bool:
+    readme_lower = readme_text.lower()
+    return any(marker in readme_lower for marker in ("codecov", "coveralls", "coverage"))
+
+
+def _readme_path(repo: dict[str, Any]) -> str | None:
+    for entry in repo.get("root_entries", []):
+        name = str(entry.get("name") or "")
+        if entry.get("type") == "blob" and name.lower().startswith("readme"):
+            return name
+    return None

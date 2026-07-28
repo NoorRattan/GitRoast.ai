@@ -1,24 +1,42 @@
 import type { Scores } from "@/lib/api-client";
 
-const scoreLabels: Array<[keyof Scores, string]> = [
+const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string]> = [
   ["profileStrength", "Profile"],
   ["projectDepth", "Depth"],
   ["commitConsistency", "Consistency"],
-  ["techDiversity", "Tech"],
-  ["percentileBenchmark", "Percentile"]
+  ["techDiversity", "Tech"]
 ];
 
 /** Displays the five composite audit scores using camelCase frontend fields only. */
-export function ScoreGrid({ scores }: { scores: Scores }): JSX.Element {
+export function ScoreGrid({
+  scores,
+  percentileSampleSize,
+  percentileColdStart
+}: {
+  scores: Scores;
+  percentileSampleSize: number;
+  percentileColdStart: boolean;
+}): JSX.Element {
   return (
-    <section className="panel" style={{ padding: 16 }}>
-      <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))" }}>
+    <section className="panel score-panel" aria-label="Audit score breakdown">
+      <div className="score-grid">
         {scoreLabels.map(([key, label]) => (
-          <div key={key} style={{ background: "#111313", borderRadius: 8, padding: 12 }}>
-            <div className="muted" style={{ fontSize: 13 }}>{label}</div>
-            <div style={{ fontSize: 28, fontWeight: 800 }}>{scores[key]}</div>
+          <div className="score-tile" key={key}>
+            <div className="muted score-label">{label}</div>
+            <div className="score-value">{scores[key]}</div>
           </div>
         ))}
+        <div className="score-tile percentile-tile">
+          <div className="muted score-label">Cohort rank</div>
+          <div className="score-value">
+            {scores.percentileBenchmark}<span className="score-suffix">th</span>
+          </div>
+          <p className="score-context">
+            {percentileColdStart
+              ? `Provisional - ${percentileSampleSize} comparable profiles`
+              : `Compared with ${percentileSampleSize} profiles of similar account age`}
+          </p>
+        </div>
       </div>
     </section>
   );
