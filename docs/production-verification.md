@@ -10,6 +10,8 @@ This file records the current public deployment targets for the repo. Stale cust
 | Backend | `https://gitroast-ai.onrender.com` | Live on Render. `GET /health` returns `{"status":"ok"}`. |
 | Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live on workers.dev. Cache-key behavior has been verified with versioned `?v=` URLs. |
 
+Latest verified frontend Worker version: `8334444a-d5ea-4bb3-8a7f-9a56466126d4`.
+
 ## Repo-Side Production Configuration
 
 - Root `wrangler.jsonc` deploys the OpenNext frontend Worker to workers.dev with `workers_dev: true`.
@@ -55,8 +57,8 @@ npm run deploy:direct
 ## Confirmed Platform Limits
 
 - Cloudflare Workers Free plan Worker-size limit is 3 MB after gzip compression.
-- Latest frontend bundle check: `1.47 MiB gzip / 3.00 MiB`.
-- The card Worker preview deploy remains under the Cloudflare Worker gzip limit.
+- Latest frontend deploy: `1093.10 KiB` gzip, under the `3.00 MiB` limit.
+- Latest card Worker preview deploy: `1190.96 KiB` gzip, under the `3.00 MiB` limit.
 
 ## Smoke Checklist
 

@@ -436,6 +436,8 @@ a:focus-visible {
 .score-visual-labels {
   display: grid;
   gap: 8px;
+  width: min(54%, 230px);
+  align-self: flex-end;
 }
 
 .score-visual-labels div {

@@ -28,7 +28,7 @@ describe("ScoreScene", () => {
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-91-50-80-65");
   });
 
-  it("uses the static fallback image for reduced motion", () => {
+  it("keeps the 3D visual but freezes motion when reduced motion is requested", () => {
     window.matchMedia = vi.fn().mockReturnValue({
       matches: true,
       addEventListener: vi.fn(),
@@ -37,10 +37,7 @@ describe("ScoreScene", () => {
 
     render(<ScoreScene scores={scores} username="newstarter" schemaVersion={4} />);
 
-    expect(screen.getByTestId("score-fallback")).toBeInTheDocument();
-    expect(screen.getByAltText("newstarter static audit card")).toHaveAttribute(
-      "src",
-      "https://gitroast-card-preview.jnoorrattan.workers.dev/card/newstarter.png?v=4"
-    );
+    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-motion", "static");
+    expect(screen.getByTestId("score-canvas")).toBeInTheDocument();
   });
 });

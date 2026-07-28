@@ -19,7 +19,7 @@ The earlier unauthenticated preview failure was caused by the temporary preview 
 
 Cloudflare's Workers Free plan limit is 3 MB after gzip compression. This Worker dry-run reports:
 
-`Total Upload: 3360.82 KiB / gzip: 1190.83 KiB`
+`Total Upload: 3361.29 KiB / gzip: 1190.96 KiB`
 
 So the authenticated Free plan deploy is comfortably under the real 3 MB gzip limit.
 
@@ -35,34 +35,34 @@ Deployed URL:
 
 Version ID:
 
-`45c6b7d2-c070-4657-bcdb-4ea7e1134881`
+`e2982260-86a9-4f2a-a260-139e9c0a7a55`
 
 Probe commands:
 
 ```bash
-curl -I "https://gitroast-card-preview.jnoorrattan.workers.dev/card/octocat.png?v=1"
-curl -I "https://gitroast-card-preview.jnoorrattan.workers.dev/card/octocat.png?v=2"
+curl -I "https://gitroast-card-preview.jnoorrattan.workers.dev/card/octocat.png?v=31"
+curl -I "https://gitroast-card-preview.jnoorrattan.workers.dev/card/octocat.png?v=32"
 ```
 
 Observed result after initial misses:
 
 ```text
-/card/octocat.png?v=1
+/card/octocat.png?v=31
 HTTP/1.1 200 OK
 Content-Type: image/png
 CF-Cache-Status: HIT
-Age: 5
+Age: 0
 Cache-Control: public, max-age=21600, stale-while-revalidate=3600
 
-/card/octocat.png?v=2
+/card/octocat.png?v=32
 HTTP/1.1 200 OK
 Content-Type: image/png
 CF-Cache-Status: HIT
-Age: 4
+Age: 0
 Cache-Control: public, max-age=21600, stale-while-revalidate=3600
 ```
 
-The first request to each URL returned `CF-Cache-Status: MISS`, and repeated requests to both versioned URLs independently reached `HIT`. This confirms `?v=1` and `?v=2` are separate cache entries on workers.dev.
+The first request to each URL returned `CF-Cache-Status: MISS`, and repeated requests to both versioned URLs independently reached `HIT`. This confirms `?v=31` and `?v=32` are separate cache entries on workers.dev.
 
 The preview environment now uses `https://gitroast-ai.onrender.com/api/v1` as `BACKEND_BASE_URL`, so the workers.dev endpoint can render cards from the live backend when card data is available. Fallback PNG responses and rendered card responses use the same `Content-Type` and `Cache-Control` headers.
 

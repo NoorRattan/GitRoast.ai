@@ -1,9 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import type { Scores } from "@/lib/api-client";
-import { buildCardImageUrl } from "@/lib/api-client";
 
 const orderedScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#e2b766"],
@@ -13,18 +11,13 @@ const orderedScores: Array<[keyof Scores, string, string]> = [
   ["percentileBenchmark", "Rank", "#a3d977"]
 ];
 
-/** Animated Three.js score field with a static card fallback for reduced motion. */
+/** Animated Three.js score field that freezes on one frame for reduced motion. */
 export default function ScoreScene({ scores, username, schemaVersion }: { scores: Scores; username: string; schemaVersion: number }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
-  const imageUrl = buildCardImageUrl(username, schemaVersion);
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
 
   useEffect(() => {
-    if (reducedMotion) {
-      return;
-    }
-
     let frame = 0;
     let cleanup = () => undefined;
     let cancelled = false;
@@ -40,7 +33,12 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         return;
       }
 
-      const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        preserveDrawingBuffer: true
+      });
       renderer.setClearColor(0x000000, 0);
 
       const scene = new THREE.Scene();
@@ -132,6 +130,9 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
         renderer.setSize(width, height, false);
         camera.aspect = width / height;
         camera.updateProjectionMatrix();
+        if (reducedMotion) {
+          renderer.render(scene, camera);
+        }
       };
 
       const animate = () => {
@@ -156,12 +157,16 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
 
       resize();
       window.addEventListener("resize", resize);
-      canvas.addEventListener("pointerdown", pointerDown);
-      canvas.addEventListener("pointermove", pointerMove);
-      canvas.addEventListener("pointerup", pointerUp);
-      canvas.addEventListener("pointercancel", pointerUp);
-      canvas.addEventListener("pointerleave", pointerLeave);
-      animate();
+      if (reducedMotion) {
+        renderer.render(scene, camera);
+      } else {
+        canvas.addEventListener("pointerdown", pointerDown);
+        canvas.addEventListener("pointermove", pointerMove);
+        canvas.addEventListener("pointerup", pointerUp);
+        canvas.addEventListener("pointercancel", pointerUp);
+        canvas.addEventListener("pointerleave", pointerLeave);
+        animate();
+      }
 
       cleanup = () => {
         window.cancelAnimationFrame(frame);
@@ -193,12 +198,16 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
     };
   }, [scores, reducedMotion]);
 
-  if (reducedMotion) {
-    return <FallbackImage username={username} imageUrl={imageUrl} />;
-  }
-
   return (
-    <section className="panel score-visual" aria-label="Animated 3D score visualization" data-testid="score-scene" data-score-signature={signature}>
+    <section
+      className="panel score-visual"
+      aria-label={reducedMotion ? "Static 3D score visualization" : "Animated 3D score visualization"}
+      data-testid="score-scene"
+      data-score-signature={signature}
+      data-motion={reducedMotion ? "static" : "animated"}
+      data-profile={username}
+      data-schema-version={schemaVersion}
+    >
       <canvas ref={canvasRef} data-testid="score-canvas" aria-hidden="true" />
       <div className="score-visual-overlay">
         <span className="score-visual-kicker">3D score field</span>
@@ -211,14 +220,6 @@ export default function ScoreScene({ scores, username, schemaVersion }: { scores
           ))}
         </div>
       </div>
-    </section>
-  );
-}
-
-function FallbackImage({ username, imageUrl }: { username: string; imageUrl: string }): JSX.Element {
-  return (
-    <section className="panel score-fallback" data-testid="score-fallback">
-      <Image className="score-fallback-image" src={imageUrl} alt={`${username} static audit card`} width={1200} height={630} unoptimized />
     </section>
   );
 }
