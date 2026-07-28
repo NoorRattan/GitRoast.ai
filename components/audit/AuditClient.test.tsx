@@ -79,11 +79,11 @@ describe("AuditClient", () => {
       percentileColdStart: true
     })} />);
 
-    // Cold-start: value shown with ~ prefix, provisional context, and growing-sample caveat.
-    expect(screen.getByLabelText("provisional")).toBeInTheDocument(); // ~ span
-    expect(screen.getByText(/Ahead of 75% of 1 comparable profile/)).toBeInTheDocument();
-    expect(screen.getByText(/Based on a small, growing sample/)).toBeInTheDocument();
-    expect(screen.queryByText("N/A")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Not enough comparable profiles yet")).toHaveTextContent("N/A");
+    expect(screen.getByText("Not enough comparable profiles yet.")).toBeInTheDocument();
+    expect(screen.getByText(/1 comparable profile so far/)).toBeInTheDocument();
+    expect(screen.queryByText(/Ahead of 75%/)).not.toBeInTheDocument();
+    expect(screen.queryByText("75%")).not.toBeInTheDocument();
   });
 
   it("requests a new roast when intensity changes from a server-provided audit", async () => {

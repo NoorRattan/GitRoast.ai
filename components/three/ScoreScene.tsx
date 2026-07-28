@@ -3,14 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { Finding, Scores } from "@/lib/api-client";
 
-// All 5 score dimensions always rendered — Rank shown with provisional styling if needed.
-const orderedScores: Array<[keyof Scores, string, string]> = [
+const baseScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#e2b766"],
   ["projectDepth", "Depth", "#69c5b8"],
   ["commitConsistency", "Cadence", "#f0786b"],
-  ["techDiversity", "Stack", "#8ab4f8"],
-  ["percentileBenchmark", "Rank", "#a3d977"]
+  ["techDiversity", "Stack", "#8ab4f8"]
 ];
+const rankScore: [keyof Scores, string, string] = ["percentileBenchmark", "Rank", "#a3d977"];
 
 const BAR_W = 0.74;
 const BAR_D = 0.74;
@@ -35,6 +34,7 @@ export default function ScoreScene({
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
+  const orderedScores = percentileColdStart ? baseScores : [...baseScores, rankScore];
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
   const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
   const [webglFailed, setWebglFailed] = useState(false);
@@ -380,7 +380,7 @@ export default function ScoreScene({
     void renderScene();
     return () => { cancelled = true; cleanup(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scores, reducedMotion]);
+  }, [scores, reducedMotion, percentileColdStart]);
 
   // Build findings per bar for tooltip
   const findingsPerBar: Finding[][] = orderedScores.map(([key]) =>
@@ -417,7 +417,7 @@ export default function ScoreScene({
 
       <div className="score-visual-overlay">
         <span className="score-visual-kicker">
-          3D score field{percentileColdStart ? " · provisional rank" : ""}
+          3D score field
         </span>
         <div className="score-visual-labels">
           {orderedScores.map(([key, label, color]) => (
