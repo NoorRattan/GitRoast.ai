@@ -117,5 +117,12 @@ def create_rate_limiters(redis_url: str, redis_token: str) -> RateLimiterRegistr
                 window_seconds=3600,
                 prefix="gitroast:ratelimit:card_data",
             ),
+            "project_evaluation": UpstashFixedWindowLimiter(
+                redis_url,
+                redis_token,
+                max_requests=10,
+                window_seconds=3600,
+                prefix="gitroast:ratelimit:project_evaluation",
+            ),
         }
     )

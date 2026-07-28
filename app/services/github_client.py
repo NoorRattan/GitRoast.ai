@@ -1,4 +1,5 @@
 import asyncio
+import base64
 from dataclasses import dataclass
 from typing import Any
 
@@ -6,6 +7,9 @@ import httpx
 
 
 GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
+GITHUB_REST_URL = "https://api.github.com"
+MAX_EVALUATION_FILES = 28
+MAX_EVALUATION_FILE_BYTES = 40_000
 
 
 class GitHubClientError(Exception):
@@ -163,6 +167,51 @@ class GitHubGraphQLClient:
         await self._hydrate_readmes(profile, request)
         return profile
 
+    async def query_repository_evidence(self, repo_url: str) -> dict[str, Any]:
+        owner, repo = parse_github_repo_url(repo_url)
+        repository = await self._request_rest(f"/repos/{owner}/{repo}")
+        if repository.get("private"):
+            raise GitHubClientError("GitHub repository not found", status_code=404)
+        default_branch = str(repository.get("default_branch") or "HEAD")
+        commit = await self._request_rest(f"/repos/{owner}/{repo}/commits/{default_branch}")
+        commit_sha = str(commit.get("sha") or default_branch)
+        tree = await self._request_rest(f"/repos/{owner}/{repo}/git/trees/{commit_sha}", params={"recursive": "1"})
+        entries = [
+            {
+                "path": item.get("path"),
+                "type": item.get("type"),
+                "size": int(item.get("size") or 0),
+            }
+            for item in tree.get("tree", [])
+            if item.get("type") == "blob" and item.get("path")
+        ]
+        selected = select_evaluation_paths(entries)
+        files = []
+        for path in selected:
+            content = await self._request_rest(f"/repos/{owner}/{repo}/contents/{path}", params={"ref": default_branch})
+            if content.get("encoding") != "base64" or not content.get("content"):
+                continue
+            raw = base64.b64decode(str(content["content"]), validate=False)
+            text = raw[:MAX_EVALUATION_FILE_BYTES].decode("utf-8", errors="replace")
+            files.append(
+                {
+                    "path": path,
+                    "size": int(content.get("size") or len(raw)),
+                    "truncated": len(raw) > MAX_EVALUATION_FILE_BYTES,
+                    "text": text,
+                }
+            )
+
+        return {
+            "repo_url": f"https://github.com/{owner}/{repo}",
+            "owner": owner,
+            "name": repo,
+            "default_branch": default_branch,
+            "commit_sha": commit_sha,
+            "tree_files": entries,
+            "files": files,
+        }
+
     async def _hydrate_readmes(self, profile: dict[str, Any], request: GitHubProfileRequest) -> None:
         candidates = [
             repo
@@ -191,6 +240,39 @@ class GitHubGraphQLClient:
     async def execute(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
         async with self._semaphore:
             return await self._execute_serialized(query, variables or {})
+
+    async def _request_rest(self, path: str, *, params: dict[str, str] | None = None) -> dict[str, Any]:
+        async with self._semaphore:
+            response = await self._http_client.get(
+                f"{GITHUB_REST_URL}{path}",
+                params=params,
+                headers={
+                    "Authorization": f"Bearer {self._token}",
+                    "Accept": "application/vnd.github+json",
+                    "X-GitHub-Api-Version": "2022-11-28",
+                },
+            )
+        if response.status_code in {403, 429}:
+            raise GitHubRateLimitError(
+                "GitHub rate limit blocked repository evidence collection",
+                status_code=response.status_code,
+                retryable=True,
+            )
+        if response.status_code == 404:
+            raise GitHubClientError("GitHub repository not found", status_code=404)
+        if response.status_code >= 500:
+            raise GitHubClientError(
+                f"GitHub REST request failed with status {response.status_code}",
+                status_code=response.status_code,
+                retryable=True,
+            )
+        if response.status_code >= 400:
+            raise GitHubClientError(
+                f"GitHub REST request failed with status {response.status_code}",
+                status_code=response.status_code,
+                retryable=False,
+            )
+        return response.json()
 
     async def _execute_serialized(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         undocumented_failures = 0
@@ -325,3 +407,73 @@ def _readme_path(repo: dict[str, Any]) -> str | None:
         if entry.get("type") == "blob" and name.lower().startswith("readme"):
             return name
     return None
+
+
+def parse_github_repo_url(repo_url: str) -> tuple[str, str]:
+    parts = repo_url.rstrip("/").split("/")
+    if len(parts) < 5 or parts[2].lower() != "github.com":
+        raise GitHubClientError("Invalid GitHub repository URL", status_code=422)
+    owner = parts[3]
+    repo = parts[4].removesuffix(".git")
+    if not owner or not repo:
+        raise GitHubClientError("Invalid GitHub repository URL", status_code=422)
+    return owner, repo
+
+
+def select_evaluation_paths(entries: list[dict[str, Any]], *, limit: int = MAX_EVALUATION_FILES) -> list[str]:
+    candidates = [
+        entry
+        for entry in entries
+        if int(entry.get("size") or 0) <= MAX_EVALUATION_FILE_BYTES and _is_text_evaluation_file(str(entry.get("path") or ""))
+    ]
+    candidates.sort(key=lambda entry: (_path_priority(str(entry["path"])), -int(entry.get("size") or 0), str(entry["path"])))
+    return [str(entry["path"]) for entry in candidates[:limit]]
+
+
+def _is_text_evaluation_file(path: str) -> bool:
+    lowered = path.lower()
+    if any(part in lowered.split("/") for part in {"node_modules", ".git", ".next", "dist", "build", ".venv"}):
+        return False
+    return lowered.endswith(
+        (
+            ".md",
+            ".txt",
+            ".py",
+            ".js",
+            ".jsx",
+            ".ts",
+            ".tsx",
+            ".json",
+            ".toml",
+            ".yaml",
+            ".yml",
+            ".sql",
+            ".html",
+            ".css",
+            ".rs",
+            ".go",
+            ".java",
+            ".kt",
+            ".rb",
+            ".php",
+            ".cs",
+        )
+    )
+
+
+def _path_priority(path: str) -> int:
+    lowered = path.lower()
+    name = lowered.rsplit("/", 1)[-1]
+    if name.startswith("readme"):
+        return 0
+    if name in {"package.json", "pyproject.toml", "requirements.txt", "poetry.lock", "cargo.toml", "go.mod"}:
+        return 1
+    if lowered.startswith(".github/workflows/"):
+        return 2
+    if "/test" in lowered or name.startswith("test_") or ".test." in lowered or ".spec." in lowered:
+        return 3
+    if name in {"main.py", "app.py", "server.py", "index.ts", "index.tsx", "index.js", "app.ts", "app.tsx"}:
+        return 4
+    if lowered.startswith(("app/", "src/", "lib/", "components/")):
+        return 5
+    return 9

@@ -1,6 +1,7 @@
 import inspect
 import json
 import logging
+import hashlib
 import time
 from typing import Any
 
@@ -15,6 +16,12 @@ def audit_scores_key(username: str, schema_version: int) -> str:
 
 def audit_roast_key(username: str, intensity_applied: str, schema_version: int) -> str:
     return f"audit_roast:{username.lower()}:{intensity_applied.lower()}:{schema_version}"
+
+
+def project_evaluation_key(repo_url: str, commit_sha: str, problem_statement: str, schema_version: int) -> str:
+    normalized_repo = repo_url.rstrip("/").lower()
+    problem_hash = hashlib.sha256(problem_statement.strip().encode("utf-8")).hexdigest()[:16]
+    return f"project_eval:{normalized_repo}:{commit_sha}:{problem_hash}:{schema_version}"
 
 
 def should_refresh_stale_entry(age_seconds: int, ttl_seconds: int = CACHE_TTL_SECONDS) -> bool:
@@ -46,6 +53,27 @@ async def set_audit_roast(
     value: dict[str, Any],
 ) -> bool:
     return await _set_json(client, audit_roast_key(username, intensity_applied, schema_version), value)
+
+
+async def get_project_evaluation(
+    client: Any,
+    repo_url: str,
+    commit_sha: str,
+    problem_statement: str,
+    schema_version: int,
+) -> dict[str, Any] | None:
+    return await _get_json(client, project_evaluation_key(repo_url, commit_sha, problem_statement, schema_version))
+
+
+async def set_project_evaluation(
+    client: Any,
+    repo_url: str,
+    commit_sha: str,
+    problem_statement: str,
+    schema_version: int,
+    value: dict[str, Any],
+) -> bool:
+    return await _set_json(client, project_evaluation_key(repo_url, commit_sha, problem_statement, schema_version), value)
 
 
 async def purge_audit_cache(client: Any, username: str, schema_version: int) -> bool:

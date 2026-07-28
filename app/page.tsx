@@ -19,6 +19,7 @@ export default async function HomePage({
         <header className="topbar">
           <Link className="brand" href="/" aria-label="GitRoast.ai home">GitRoast.ai</Link>
           <nav className="topbar-actions" aria-label="Primary navigation">
+            <Link className="button ghost" href="/evaluate">Project evaluator</Link>
             <a className="button ghost" href="https://github.com/NoorRattan/GitRoast.ai" target="_blank" rel="noreferrer">GitHub</a>
           </nav>
         </header>

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.errors import install_error_handlers
 from app.db.session import close_db, init_db
-from app.routers import admin, audit, card_data, health, opt_out
+from app.routers import admin, audit, card_data, health, opt_out, project_evaluation
 from app.services.cache import create_upstash_client
 from app.services.github_client import GitHubGraphQLClient
 from app.services.rate_limit import create_rate_limiters
@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(audit.router)
     app.include_router(card_data.router)
     app.include_router(opt_out.router)
+    app.include_router(project_evaluation.router)
     app.include_router(admin.router)
     return app
 

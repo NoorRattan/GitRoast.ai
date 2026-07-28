@@ -48,6 +48,31 @@ export type CardData = {
   percentileColdStart: boolean;
 };
 
+export type ProjectEvidencePoint = {
+  file: string;
+  detail: string;
+};
+
+export type ProjectCategoryEvaluation = {
+  score: number;
+  bandJustification: string;
+  evidence: ProjectEvidencePoint[];
+};
+
+export type ProjectEvaluationResult = {
+  projectType: "web_app" | "api_backend" | "cli_tool" | "data_science" | "library" | "other";
+  excludedCategories: string[];
+  categories: Record<string, ProjectCategoryEvaluation>;
+  overallScore: number;
+  gradeLabel: string;
+  calibrationNote: string;
+  flags: {
+    claimsExceedEvidence: boolean;
+    possibleStubImplementation: boolean;
+    insufficientEvidenceGathered: boolean;
+  };
+};
+
 export type AdminReview = {
   id: number;
   auditId: number;
@@ -125,6 +150,14 @@ export async function requestAudit(username: string, roastIntensity: RoastIntens
   return apiFetch<AuditResult>("/audit", {
     method: "POST",
     body: JSON.stringify(camelToSnake({ username, roastIntensity })),
+    headers: { "content-type": "application/json" }
+  });
+}
+
+export async function requestProjectEvaluation(repoUrl: string, problemStatement: string): Promise<ProjectEvaluationResult> {
+  return apiFetch<ProjectEvaluationResult>("/project-evaluation", {
+    method: "POST",
+    body: JSON.stringify(camelToSnake({ repoUrl, problemStatement })),
     headers: { "content-type": "application/json" }
   });
 }
