@@ -32,16 +32,17 @@ export default function ScoreScene({
   percentileColdStart?: boolean;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const sectionRef = useRef<HTMLElement | null>(null);
   const reducedMotion = usePrefersReducedMotion();
   const orderedScores = percentileColdStart ? baseScores : [...baseScores, rankScore];
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
   const [hoveredBar, setHoveredBar] = useState<HoveredBar | null>(null);
+  const [webglFailed, setWebglFailed] = useState(false);
 
   useEffect(() => {
     let frame = 0;
     let cleanup = () => undefined;
     let cancelled = false;
+    setWebglFailed(false);
 
     async function renderScene() {
       const canvas = canvasRef.current;
@@ -59,19 +60,27 @@ export default function ScoreScene({
         return document.documentElement.getAttribute("data-theme") !== "light";
       }
 
-      const renderer = new THREE.WebGLRenderer({
-        canvas,
-        antialias: true,
-        alpha: true,
-        preserveDrawingBuffer: true
-      });
+      let renderer: import("three").WebGLRenderer;
+      try {
+        renderer = new THREE.WebGLRenderer({
+          canvas,
+          antialias: true,
+          alpha: true,
+          powerPreference: "high-performance",
+          preserveDrawingBuffer: true
+        });
+      } catch {
+        setWebglFailed(true);
+        return;
+      }
       renderer.setClearColor(0x000000, 0);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-      camera.position.set(0, 0.45, 7.6);
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+      camera.position.set(0, 0.16, 8.2);
 
       const group = new THREE.Group();
+      group.position.set(-0.12, -0.05, 0);
       scene.add(group);
 
       const ambientLight = new THREE.AmbientLight(0xffffff, isDarkTheme() ? 1.7 : 2.2);
@@ -84,7 +93,7 @@ export default function ScoreScene({
         new THREE.IcosahedronGeometry(0.62, 2),
         new THREE.MeshStandardMaterial({ color: 0xe2b766, roughness: 0.38, metalness: 0.34 })
       );
-      core.position.set(-2.45, 0, 0.42);
+      core.position.set(-1.64, -0.03, 0.42);
       group.add(core);
 
       const ring = new THREE.Mesh(
@@ -97,7 +106,7 @@ export default function ScoreScene({
 
       const bars = orderedScores.map(([key, , color], index) => {
         const score = Math.max(2, Math.min(100, scores[key]));
-        const width = 0.35 + score / 24;
+        const width = 0.45 + score / 36;
         const material = new THREE.MeshStandardMaterial({
           color,
           emissive: color,
@@ -106,7 +115,7 @@ export default function ScoreScene({
           metalness: 0.16
         });
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(width, 0.2, 0.44), material);
-        mesh.position.set(0.25 + width / 2, 1.55 - index * 0.78, (index % 2) * 0.2);
+        mesh.position.set(0.28 + width / 2, 1.26 - index * 0.66, (index % 2) * 0.18);
         group.add(mesh);
         return { mesh, score };
       });
@@ -224,6 +233,7 @@ export default function ScoreScene({
         attributes: true,
         attributeFilter: ["data-theme"]
       });
+      const resizeObserver = typeof ResizeObserver !== "undefined" ? new ResizeObserver(resize) : null;
 
       const animate = () => {
         const now = performance.now() / 1000;
@@ -246,6 +256,7 @@ export default function ScoreScene({
       };
 
       resize();
+      resizeObserver?.observe(canvas);
       window.addEventListener("resize", resize);
       if (reducedMotion) {
         renderer.render(scene, camera);
@@ -261,6 +272,7 @@ export default function ScoreScene({
       cleanup = () => {
         window.cancelAnimationFrame(frame);
         window.removeEventListener("resize", resize);
+        resizeObserver?.disconnect();
         canvas.removeEventListener("pointerdown", pointerDown);
         canvas.removeEventListener("pointermove", pointerMove);
         canvas.removeEventListener("pointerup", pointerUp);
@@ -300,7 +312,6 @@ export default function ScoreScene({
 
   return (
     <section
-      ref={sectionRef}
       className="panel score-visual"
       aria-label={reducedMotion ? "Static 3D score visualization" : "Animated 3D score visualization. Drag to rotate; hover bars to see scoring evidence."}
       data-testid="score-scene"
@@ -309,9 +320,25 @@ export default function ScoreScene({
       data-profile={username}
       data-schema-version={schemaVersion}
     >
-      <canvas ref={canvasRef} data-testid="score-canvas" aria-hidden="true" />
-      <div className="score-visual-overlay">
-        <span className="score-visual-kicker">3D score field</span>
+      <span className="score-visual-kicker">3D score field</span>
+      <div className="score-visual-body">
+        <div className="score-visual-stage" data-webgl={webglFailed ? "fallback" : "active"}>
+          <canvas ref={canvasRef} data-testid="score-canvas" aria-hidden="true" />
+          {webglFailed ? (
+            <div className="score-visual-fallback" aria-hidden="true">
+              {orderedScores.map(([key, , color], index) => (
+                <span
+                  key={key}
+                  style={{
+                    "--bar-color": color,
+                    "--bar-width": `${Math.max(8, scores[key])}%`,
+                    "--bar-index": index
+                  } as React.CSSProperties}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
         <div className="score-visual-labels">
           {orderedScores.map(([key, label, color]) => (
             <div key={key}>
@@ -382,8 +409,16 @@ function usePrefersReducedMotion(): boolean {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     setReduced(media.matches);
     const listener = () => setReduced(media.matches);
-    media.addEventListener("change", listener);
-    return () => media.removeEventListener("change", listener);
+    if ("addEventListener" in media) {
+      media.addEventListener("change", listener);
+      return () => media.removeEventListener("change", listener);
+    }
+    const legacyMedia = media as MediaQueryList & {
+      addListener: (listener: (event: MediaQueryListEvent) => void) => void;
+      removeListener: (listener: (event: MediaQueryListEvent) => void) => void;
+    };
+    legacyMedia.addListener(listener);
+    return () => legacyMedia.removeListener(listener);
   }, []);
   return reduced;
 }

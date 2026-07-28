@@ -481,6 +481,9 @@ a:focus-visible {
 .score-visual {
   position: relative;
   overflow: hidden;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
   background:
     radial-gradient(circle at 24% 34%, rgba(226, 183, 102, 0.18), transparent 30%),
     linear-gradient(145deg, rgba(105, 197, 184, 0.08), rgba(138, 180, 248, 0.04)),
@@ -493,27 +496,6 @@ a:focus-visible {
     radial-gradient(circle at 24% 34%, rgba(184, 132, 30, 0.12), transparent 30%),
     linear-gradient(145deg, rgba(42, 143, 132, 0.07), rgba(37, 99, 196, 0.04)),
     var(--scene-bg);
-}
-
-.score-visual canvas {
-  display: block;
-  width: 100%;
-  height: 360px;
-  cursor: grab;
-  touch-action: none;
-}
-
-.score-visual canvas:active {
-  cursor: grabbing;
-}
-
-.score-visual-overlay {
-  position: absolute;
-  inset: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  pointer-events: none;
 }
 
 .score-visual-kicker {
@@ -533,11 +515,63 @@ a:focus-visible {
   border-color: rgba(42, 143, 132, 0.5);
 }
 
+.score-visual-body {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.score-visual-stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 250px;
+}
+
+.score-visual canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 250px;
+  cursor: grab;
+  touch-action: none;
+}
+
+.score-visual canvas:active {
+  cursor: grabbing;
+}
+
+.score-visual-stage[data-webgl="fallback"] canvas {
+  opacity: 0;
+}
+
+.score-visual-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  padding: 18px 4px;
+}
+
+.score-visual-fallback span {
+  width: var(--bar-width);
+  max-width: 100%;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--bar-color);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--bar-color), transparent 55%);
+  transform-origin: left center;
+  animation: score-fallback-pulse 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--bar-index) * 120ms);
+}
+
 .score-visual-labels {
   display: grid;
   gap: 8px;
-  width: min(54%, 230px);
-  align-self: flex-end;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-self: center;
+  min-width: 0;
 }
 
 .score-visual-labels div {
@@ -550,6 +584,7 @@ a:focus-visible {
   background: var(--scene-label-bg);
   padding: 8px 10px;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   transition: background 0.2s ease;
 }
 
@@ -560,6 +595,25 @@ a:focus-visible {
 
 .score-visual-labels strong {
   font-size: 20px;
+}
+
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  .score-visual-labels div {
+    background: var(--panel);
+  }
+}
+
+@keyframes score-fallback-pulse {
+  0%,
+  100% {
+    transform: scaleX(0.94);
+    opacity: 0.72;
+  }
+
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
 }
 
 /* Findings tooltip that appears over the 3D scene on bar hover */
@@ -1024,6 +1078,15 @@ a:focus-visible {
 
   .findings-list li {
     grid-template-columns: 1fr;
+  }
+
+  .score-visual-body {
+    grid-template-columns: 1fr;
+  }
+
+  .score-visual-stage,
+  .score-visual canvas {
+    min-height: 230px;
   }
 
   .finding-tag {
