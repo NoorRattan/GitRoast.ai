@@ -47,55 +47,59 @@ export function ProjectEvaluationClient(): JSX.Element {
 
   return (
     <div className="grid evaluation-grid">
-      <section className="panel evaluation-form-panel">
-        <p className="eyebrow">Deep project evaluator</p>
-        <h1 className="evaluation-title">Score a repo against the problem it claims to solve.</h1>
-        <form className="evaluation-form" onSubmit={(event) => void onSubmit(event)}>
-          <label>
-            <span>GitHub repository URL</span>
-            <input
-              className="input"
-              value={repoUrl}
-              onChange={(event) => setRepoUrl(event.target.value)}
-              placeholder="https://github.com/owner/repo"
-              inputMode="url"
-              required
-            />
-          </label>
-          <label>
-            <span>Problem statement</span>
-            <textarea
-              className="input evaluation-textarea"
-              value={problemStatement}
-              onChange={(event) => setProblemStatement(event.target.value)}
-              minLength={20}
-              maxLength={4000}
-              required
-            />
-          </label>
-          <button className="button primary" type="submit" disabled={isSubmitting}>
-            <SearchCode size={18} aria-hidden="true" />
-            {isSubmitting ? "Evaluating" : "Evaluate project"}
-          </button>
-        </form>
-        {error ? <p className="search-error" role="alert">{error}</p> : null}
+      <section className="double-bezel-shell">
+        <div className="double-bezel-core evaluation-form-panel">
+          <p className="eyebrow">Deep project evaluator</p>
+          <h1 className="evaluation-title">Score a repo against the problem it claims to solve.</h1>
+          <form className="evaluation-form" onSubmit={(event) => void onSubmit(event)}>
+            <label>
+              <span>GitHub repository URL</span>
+              <input
+                className="input"
+                value={repoUrl}
+                onChange={(event) => setRepoUrl(event.target.value)}
+                placeholder="https://github.com/owner/repo"
+                inputMode="url"
+                required
+              />
+            </label>
+            <label>
+              <span>Problem statement</span>
+              <textarea
+                className="input evaluation-textarea"
+                value={problemStatement}
+                onChange={(event) => setProblemStatement(event.target.value)}
+                minLength={20}
+                maxLength={4000}
+                required
+              />
+            </label>
+            <button className="button primary active-tactile" type="submit" disabled={isSubmitting}>
+              <SearchCode size={18} aria-hidden="true" />
+              {isSubmitting ? "Evaluating" : "Evaluate project"}
+            </button>
+          </form>
+          {error ? <p className="search-error" role="alert">{error}</p> : null}
+        </div>
       </section>
 
-      <section className="panel evaluation-status-panel" aria-live="polite">
-        {isSubmitting ? (
-          <ol className="evaluation-stage-list">
-            {loadingStages.map((stage, index) => (
-              <li key={stage} className={index === 0 ? "active" : ""}>{stage}</li>
-            ))}
-          </ol>
-        ) : result ? (
-          <EvaluationSummary result={result} orderedCategories={orderedCategories} />
-        ) : (
-          <div className="evaluation-empty">
-            <strong>Strict by default</strong>
-            <span>Scores require file-level evidence, non-applicable axes are excluded, and 80+ categories are capped unless citations justify them.</span>
-          </div>
-        )}
+      <section className="double-bezel-shell" aria-live="polite">
+        <div className="double-bezel-core evaluation-status-panel">
+          {isSubmitting ? (
+            <ol className="evaluation-stage-list">
+              {loadingStages.map((stage, index) => (
+                <li key={stage} className={index === 0 ? "active" : ""}>{stage}</li>
+              ))}
+            </ol>
+          ) : result ? (
+            <EvaluationSummary result={result} orderedCategories={orderedCategories} />
+          ) : (
+            <div className="evaluation-empty">
+              <strong>Strict by default</strong>
+              <span>Scores require file-level evidence, non-applicable axes are excluded, and 80+ categories are capped unless citations justify them.</span>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );

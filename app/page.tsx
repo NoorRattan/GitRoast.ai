@@ -55,26 +55,28 @@ export default async function HomePage({
             ) : null}
           </div>
 
-          <aside className="audit-preview" aria-label="Audit preview">
-            <div className="preview-header">
-              <span className="preview-title">Profile scan</span>
-              <span className="status-pill">Live</span>
-            </div>
-            <div className="terminal-lines" aria-hidden="true">
-              <span>fetch github profile</span>
-              <span>score repository depth</span>
-              <span>generate local roast</span>
-            </div>
-            <div className="score-stack">
-              {scoreSignals.map(([label, score, detail]) => (
-                <div className="score-row" key={label}>
-                  <div>
-                    <strong>{label}</strong>
-                    <span>{detail}</span>
+          <aside className="double-bezel-shell" aria-label="Audit preview">
+            <div className="double-bezel-core audit-preview">
+              <div className="preview-header">
+                <span className="preview-title">Profile scan</span>
+                <span className="status-pill">Live</span>
+              </div>
+              <div className="terminal-lines" aria-hidden="true">
+                <span>fetch github profile</span>
+                <span>score repository depth</span>
+                <span>generate local roast</span>
+              </div>
+              <div className="score-stack">
+                {scoreSignals.map(([label, score, detail]) => (
+                  <div className="score-row" key={label}>
+                    <div>
+                      <strong>{label}</strong>
+                      <span>{detail}</span>
+                    </div>
+                    <data value={score}>{score}</data>
                   </div>
-                  <data value={score}>{score}</data>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </aside>
         </section>
