@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import type { Finding, Scores } from "@/lib/api-client";
+import { useMotionPreference } from "@/components/layout/MotionProvider";
+import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
 
 const ScoreFieldCanvas = dynamic(() => import("./ScoreFieldCanvas"), { ssr: false });
 
@@ -27,8 +29,8 @@ export default function ScoreScene({
   findings?: Finding[];
   percentileColdStart?: boolean;
 }): JSX.Element {
-  const [reducedMotion, setReducedMotion] = useState(false);
   const [webglAvailable, setWebglAvailable] = useState(false);
+  const { motionEnabled } = useMotionPreference();
   const orderedScores = useMemo(() => percentileColdStart ? baseScores : [...baseScores, rankScore], [percentileColdStart]);
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
   const findingsPerBar = useMemo(() => orderedScores.map(([key]) => (
@@ -36,20 +38,15 @@ export default function ScoreScene({
   )), [findings, orderedScores]);
 
   useEffect(() => {
-    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReducedMotion(media.matches);
-    const onChange = () => setReducedMotion(media.matches);
-    media.addEventListener("change", onChange);
     try {
       const canvas = document.createElement("canvas");
       setWebglAvailable(typeof window.WebGLRenderingContext !== "undefined" && Boolean(canvas.getContext("webgl")));
     } catch {
       setWebglAvailable(false);
     }
-    return () => media.removeEventListener("change", onChange);
   }, []);
 
-  const ariaLabel = reducedMotion
+  const ariaLabel = !motionEnabled
     ? "Static score field"
     : "Interactive 3D score field. Hover a bar to inspect evidence.";
 
@@ -59,7 +56,7 @@ export default function ScoreScene({
       aria-label={ariaLabel}
       data-testid="score-scene"
       data-score-signature={signature}
-      data-motion={reducedMotion ? "static" : "animated"}
+      data-motion={motionEnabled ? "animated" : "static"}
       data-profile={username}
       data-schema-version={schemaVersion}
     >
@@ -73,7 +70,9 @@ export default function ScoreScene({
       <div className="score-scene-stage">
         <div className="scene-canvas-shell" data-testid="score-canvas" aria-hidden={webglAvailable ? "true" : undefined}>
           {webglAvailable ? (
-            <ScoreFieldCanvas scores={scores} orderedScores={orderedScores} findingsPerBar={findingsPerBar} reducedMotion={reducedMotion} />
+            <SceneErrorBoundary fallback={<FallbackBars scores={scores} orderedScores={orderedScores} />}>
+              <ScoreFieldCanvas scores={scores} orderedScores={orderedScores} findingsPerBar={findingsPerBar} reducedMotion={!motionEnabled} />
+            </SceneErrorBoundary>
           ) : (
             <FallbackBars scores={scores} orderedScores={orderedScores} />
           )}

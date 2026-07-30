@@ -37,7 +37,7 @@ export const viewport: Viewport = {
 
 // Inline script evaluated synchronously before first paint to prevent
 // flash of wrong theme. Must not reference external variables.
-const noFlashScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);return;}var q=window.matchMedia('(prefers-color-scheme: dark)');document.documentElement.setAttribute('data-theme',q.matches?'dark':'light');}catch(e){}})();`;
+const noFlashScript = `(function(){try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}else{var q=window.matchMedia('(prefers-color-scheme: dark)');document.documentElement.setAttribute('data-theme',q.matches?'dark':'light');}var m=localStorage.getItem('motion-override');if(m==='on'||m==='off'){document.documentElement.setAttribute('data-motion',m);}else if(window.matchMedia('(prefers-reduced-motion: reduce)').matches){document.documentElement.setAttribute('data-motion','off');}}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (

@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Scores } from "@/lib/api-client";
+import { MotionProvider } from "@/components/layout/MotionProvider";
 import ScoreScene from "./ScoreScene";
 
 const scores: Scores = {
@@ -21,15 +22,15 @@ beforeEach(() => {
 
 describe("ScoreScene", () => {
   it("updates its score signature when score props change", () => {
-    const { rerender } = render(<ScoreScene scores={scores} username="newstarter" schemaVersion={1} />);
+    const { rerender } = render(<MotionProvider><ScoreScene scores={scores} username="newstarter" schemaVersion={1} /></MotionProvider>);
 
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-60-50-80-65");
-    rerender(<ScoreScene scores={{ ...scores, projectDepth: 91 }} username="newstarter" schemaVersion={1} />);
+    rerender(<MotionProvider><ScoreScene scores={{ ...scores, projectDepth: 91 }} username="newstarter" schemaVersion={1} /></MotionProvider>);
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-91-50-80-65");
   });
 
   it("omits the rank score when the cohort is still cold-starting", () => {
-    render(<ScoreScene scores={scores} username="newstarter" schemaVersion={1} percentileColdStart />);
+    render(<MotionProvider><ScoreScene scores={scores} username="newstarter" schemaVersion={1} percentileColdStart /></MotionProvider>);
 
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-score-signature", "70-60-50-80");
     expect(screen.queryByText("Rank")).not.toBeInTheDocument();
@@ -42,7 +43,7 @@ describe("ScoreScene", () => {
       removeEventListener: vi.fn()
     });
 
-    render(<ScoreScene scores={scores} username="newstarter" schemaVersion={4} />);
+    render(<MotionProvider><ScoreScene scores={scores} username="newstarter" schemaVersion={4} /></MotionProvider>);
 
     expect(screen.getByTestId("score-scene")).toHaveAttribute("data-motion", "static");
     expect(screen.getByTestId("score-canvas")).toBeInTheDocument();

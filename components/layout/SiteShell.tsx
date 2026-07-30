@@ -1,17 +1,18 @@
 "use client";
 
-import { ArrowUpRight, Github, Menu, Moon, Sun, X } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { ArrowUpRight, Github, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import Lenis from "lenis";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AmbientScene } from "@/components/scene/AmbientScene";
+import { useMotionPreference } from "./MotionProvider";
 
 export function SiteShell({ children }: { children: React.ReactNode }): JSX.Element {
   const pathname = usePathname();
-  const reducedMotion = useReducedMotion();
+  const { motionEnabled } = useMotionPreference();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -19,7 +20,7 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
   }, [pathname]);
 
   useEffect(() => {
-    if (reducedMotion) return undefined;
+    if (!motionEnabled) return undefined;
 
     const lenis = new Lenis({
       duration: 1.05,
@@ -35,7 +36,7 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
       gsap.ticker.remove(onTick);
       lenis.destroy();
     };
-  }, [reducedMotion]);
+  }, [motionEnabled]);
 
   return (
     <div className="site-frame">
@@ -57,6 +58,7 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
 
         <div className="header-tools">
           <ThemeButton />
+          <MotionButton />
           <button
             className="menu-toggle"
             type="button"
@@ -73,9 +75,9 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
         <motion.div
           key={pathname}
           className="route-transition"
-          initial={reducedMotion ? false : { opacity: 0, y: 8 }}
+          initial={motionEnabled ? { opacity: 0, y: 8 } : false}
           animate={{ opacity: 1, y: 0 }}
-          exit={reducedMotion ? undefined : { opacity: 0, y: -8 }}
+          exit={motionEnabled ? { opacity: 0, y: -8 } : undefined}
           transition={{ duration: 0.38, ease: "easeOut" }}
         >
           {children}
@@ -91,6 +93,24 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
         </span>
       </footer>
     </div>
+  );
+}
+
+function MotionButton(): JSX.Element {
+  const { motionEnabled, ready, toggleMotion } = useMotionPreference();
+  const label = !ready ? "Motion preference" : motionEnabled ? "Reduce motion" : "Enable motion";
+
+  return (
+    <button
+      className={`theme-button motion-button${motionEnabled ? " is-active" : ""}`}
+      type="button"
+      aria-label={label}
+      aria-pressed={motionEnabled}
+      title={label}
+      onClick={toggleMotion}
+    >
+      <Sparkles size={16} aria-hidden="true" />
+    </button>
   );
 }
 
