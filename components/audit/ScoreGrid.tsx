@@ -1,4 +1,5 @@
 import type { Scores } from "@/lib/api-client";
+import { SpotlightCard } from "@/components/card/SpotlightCard";
 
 const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string]> = [
   ["profileStrength", "Profile"],
@@ -24,12 +25,12 @@ export function ScoreGrid({
       <div className="double-bezel-core score-panel" style={{ padding: "20px" }}>
         <div className="score-grid">
           {scoreLabels.map(([key, label]) => (
-            <div className="score-tile" key={key}>
+            <SpotlightCard className="score-tile" key={key}>
               <div className="muted score-label">{label}</div>
               <div className="score-value">{scores[key]}</div>
-            </div>
+            </SpotlightCard>
           ))}
-          <div className="score-tile percentile-tile">
+          <SpotlightCard className="score-tile percentile-tile">
             <div className="muted score-label">Cohort rank</div>
             {hasCohortRank ? (
               <div className="score-value">
@@ -51,7 +52,7 @@ export function ScoreGrid({
                 {percentileSampleSize} comparable {percentileSampleSize === 1 ? "profile" : "profiles"} so far. Rank appears after the cohort is large enough.
               </span>
             )}
-          </div>
+          </SpotlightCard>
         </div>
       </div>
     </section>

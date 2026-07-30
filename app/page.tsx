@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { SpotlightCard } from "@/components/card/SpotlightCard";
+import { Magnetic } from "@/components/audit/Magnetic";
 
 const scoreSignals = [
   ["Profile", "86", "Identity, bio, social proof"],
@@ -46,7 +48,9 @@ export default async function HomePage({
                 title="Paste a GitHub profile link, or type a GitHub username."
                 required
               />
-              <button className="button primary hero-button" type="submit">Audit profile</button>
+              <Magnetic>
+                <button className="button primary hero-button" type="submit">Audit profile</button>
+              </Magnetic>
             </form>
             {error === "invalid-profile" ? (
               <p className="search-error" role="alert">
@@ -82,18 +86,18 @@ export default async function HomePage({
         </section>
 
         <section className="status-grid" aria-label="Deployment status">
-          <div className="status-card">
+          <SpotlightCard className="status-card">
             <span>Frontend</span>
             <strong>Workers.dev online</strong>
-          </div>
-          <div className="status-card">
+          </SpotlightCard>
+          <SpotlightCard className="status-card">
             <span>Backend</span>
             <strong>Render target wired</strong>
-          </div>
-          <div className="status-card">
+          </SpotlightCard>
+          <SpotlightCard className="status-card">
             <span>Cards</span>
             <strong>Cache-key worker ready</strong>
-          </div>
+          </SpotlightCard>
         </section>
       </div>
     </main>

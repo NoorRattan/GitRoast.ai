@@ -134,6 +134,25 @@ export default function ScoreScene({
       floor.receiveShadow = true;
       group.add(floor);
 
+      // ── Stardust particles ──────────────────────────────────────────────────
+      const particleGeo = new THREE.BufferGeometry();
+      const particleCount = 100;
+      const posArray = new Float32Array(particleCount * 3);
+      for (let i = 0; i < particleCount * 3; i += 3) {
+        posArray[i] = (Math.random() - 0.5) * 14;
+        posArray[i + 1] = Math.random() * 8 - 1.5;
+        posArray[i + 2] = (Math.random() - 0.5) * 10;
+      }
+      particleGeo.setAttribute("position", new THREE.BufferAttribute(posArray, 3));
+      const particleMat = new THREE.PointsMaterial({
+        size: 0.045,
+        color: isDark() ? 0x69c5b8 : 0x2a8f84,
+        transparent: true,
+        opacity: isDark() ? 0.38 : 0.22
+      });
+      const particles = new THREE.Points(particleGeo, particleMat);
+      group.add(particles);
+
       // ── Vertical score bars ────────────────────────────────────────────────
       const totalW = (orderedScores.length - 1) * SPACING;
 
@@ -277,6 +296,8 @@ export default function ScoreScene({
         keyLight.intensity = dark ? 2.8 : 2.0;
         fillLight.intensity = dark ? 0.6 : 0.3;
         floorMat.color.set(dark ? 0x161a1e : 0xdedad4);
+        particleMat.color.set(dark ? 0x69c5b8 : 0x2a8f84);
+        particleMat.opacity = dark ? 0.38 : 0.22;
         if (reducedMotion) renderer.render(scene, camera);
       }
 
@@ -308,12 +329,28 @@ export default function ScoreScene({
         core.rotation.y += 0.016;
         ring.rotation.z -= 0.012;
 
+        // Animate stardust floating upward
+        const positions = particleGeo.attributes.position.array as Float32Array;
+        for (let i = 1; i < particleCount * 3; i += 3) {
+          positions[i] += 0.0035;
+          if (positions[i] > 6.5) {
+            positions[i] = -1.5;
+          }
+        }
+        particleGeo.attributes.position.needsUpdate = true;
+
         // Bars: entrance grow from bottom + idle float
         bars.forEach(({ mesh, barH, targetCenterY }, index) => {
-          const stagger = index * 100;
-          const t = Math.min(1, Math.max(0, (elapsed - stagger) / 560));
-          // Cubic ease-out
-          const entrance = 1 - Math.pow(1 - t, 3);
+          const stagger = index * 90;
+          const t = Math.min(1, Math.max(0, (elapsed - stagger) / 880));
+          
+          // Elastic ease-out function
+          const c4 = (2 * Math.PI) / 3;
+          const entrance = t === 0
+            ? 0
+            : t === 1
+            ? 1
+            : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1;
 
           mesh.scale.y = Math.max(0.001, entrance);
           // Pin base to y=0: center moves up proportionally to scale
@@ -373,6 +410,8 @@ export default function ScoreScene({
         (ring.material as import("three").Material).dispose();
         floor.geometry.dispose();
         floorMat.dispose();
+        particleGeo.dispose();
+        particleMat.dispose();
         setHoveredBar(null);
       };
     }
