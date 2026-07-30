@@ -11,7 +11,7 @@ import { RoastIntensityTabs } from "./RoastIntensityTabs";
 
 const ScoreScene = dynamic(() => import("@/components/three/ScoreScene"), {
   ssr: false,
-  loading: () => <section className="panel score-visual-loading"><span className="muted">Loading score field...</span></section>
+  loading: () => <section className="score-visual score-loading"><div className="loading-orbit" aria-hidden="true"><span /><span /><span /></div><span className="section-kicker">Loading signal topology</span></section>
 });
 
 /** Client-side audit runner used only after the server cache-read path has rendered immediately. */
@@ -33,23 +33,24 @@ export function AuditClient({ username, initialAudit }: { username: string; init
   );
 
   return (
-    <div className="grid">
-      <section className="panel audit-header">
+    <div className="audit-flow">
+      <section className="audit-header">
         <div className="audit-header-row">
           <div>
-            <h1 className="audit-title">{username}</h1>
-            <p className="muted audit-subtitle">
+            <p className="section-kicker">Profile audit / live read</p>
+            <h1 className="audit-title"><span>@</span>{username}</h1>
+            <p className="audit-subtitle">
               {audit ? `Applied intensity: ${audit.roastIntensityApplied}` : "Preparing audit"}
-              {query.isFetching && audit ? " - Updating roast" : ""}
+              {query.isFetching && audit ? " · Updating roast" : " · Evidence-linked"}
             </p>
           </div>
-          <RoastIntensityTabs value={intensity} onChange={setIntensity} disabled={query.isFetching} />
+          <div className="audit-controls"><span className="control-label">Roast intensity</span><RoastIntensityTabs value={intensity} onChange={setIntensity} disabled={query.isFetching} /></div>
         </div>
       </section>
 
       {errorMessage ? (
         <>
-          <section className="panel alert-panel" role="alert">
+          <section className="alert-panel" role="alert">
             <span>{errorMessage}</span>
             <button className="button" type="button" onClick={() => void query.refetch()}>
               Retry
@@ -73,8 +74,8 @@ export function AuditClient({ username, initialAudit }: { username: string; init
           )}
         />
       ) : (
-        <section className="panel empty-panel">
-          <p className="muted flush">
+        <section className="empty-panel">
+          <p className="flush">
             Audit is running. This page will update when the backend returns.
           </p>
         </section>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy, ExternalLink, Github, Share2 } from "lucide-react";
+import { ArrowUpRight, Check, Copy, ExternalLink, Github, Share2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 import { buildCardImageUrl } from "@/lib/api-client";
@@ -35,15 +35,10 @@ export function ShareCard({ username, schemaVersion }: ShareCardProps): JSX.Elem
   }
 
   return (
-    <section className="panel share-card">
-      <Image
-        src={imageUrl}
-        alt={`${username} GitRoast share card`}
-        width={1200}
-        height={630}
-        unoptimized
-        className="share-card-image"
-      />
+    <section className="share-card">
+      <div className="share-card-heading"><span className="section-kicker">The artifact</span><ArrowUpRight size={17} aria-hidden="true" /></div>
+      <div className="share-image-frame"><Image src={imageUrl} alt={`${username} GitRoast share card`} width={1200} height={630} unoptimized className="share-card-image" /></div>
+      <p className="share-card-copy">Keep the read. Share the receipt. Come back when the signal changes.</p>
       <div className="share-actions">
         <button className="button primary" type="button" onClick={() => void share()}>
           <Share2 aria-hidden="true" size={17} /> Share

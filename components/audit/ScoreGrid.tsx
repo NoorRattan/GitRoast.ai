@@ -1,59 +1,20 @@
 import type { Scores } from "@/lib/api-client";
-import { SpotlightCard } from "@/components/card/SpotlightCard";
 
-const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string]> = [
-  ["profileStrength", "Profile"],
-  ["projectDepth", "Depth"],
-  ["commitConsistency", "Consistency"],
-  ["techDiversity", "Tech"]
+const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string, string]> = [
+  ["profileStrength", "Profile", "The visible surface"],
+  ["projectDepth", "Depth", "Proof of real work"],
+  ["commitConsistency", "Cadence", "Evidence of upkeep"],
+  ["techDiversity", "Stack", "Range without noise"]
 ];
 
-/** Displays the four score dimensions plus the cohort-rank status. */
-export function ScoreGrid({
-  scores,
-  percentileSampleSize,
-  percentileColdStart
-}: {
-  scores: Scores;
-  percentileSampleSize: number;
-  percentileColdStart: boolean;
-}): JSX.Element {
+export function ScoreGrid({ scores, percentileSampleSize, percentileColdStart }: { scores: Scores; percentileSampleSize: number; percentileColdStart: boolean }): JSX.Element {
   const hasCohortRank = !percentileColdStart;
-
   return (
-    <section className="double-bezel-shell score-panel-wrapper" aria-label="Audit score breakdown">
-      <div className="double-bezel-core score-panel" style={{ padding: "20px" }}>
-        <div className="score-grid">
-          {scoreLabels.map(([key, label]) => (
-            <SpotlightCard className="score-tile" key={key}>
-              <div className="muted score-label">{label}</div>
-              <div className="score-value">{scores[key]}</div>
-            </SpotlightCard>
-          ))}
-          <SpotlightCard className="score-tile percentile-tile">
-            <div className="muted score-label">Cohort rank</div>
-            {hasCohortRank ? (
-              <div className="score-value">
-                {scores.percentileBenchmark}
-                <span className="score-suffix">%</span>
-              </div>
-            ) : (
-              <div className="score-value score-value-unavailable" aria-label="Not enough comparable profiles yet">
-                N/A
-              </div>
-            )}
-            <p className="score-context">
-              {hasCohortRank
-                ? `Ahead of ${scores.percentileBenchmark}% of developers with similar account age`
-                : "Not enough comparable profiles yet."}
-            </p>
-            {percentileColdStart && (
-              <span className="cold-start-caveat">
-                {percentileSampleSize} comparable {percentileSampleSize === 1 ? "profile" : "profiles"} so far. Rank appears after the cohort is large enough.
-              </span>
-            )}
-          </SpotlightCard>
-        </div>
+    <section className="score-panel" aria-label="Audit score breakdown">
+      <div className="score-panel-heading"><div><span className="section-kicker">The readout</span><h2>Four signals. One direction.</h2></div><span className="score-panel-rule" /></div>
+      <div className="score-matrix">
+        {scoreLabels.map(([key, label, detail], index) => <div className="score-metric" key={key}><span className="metric-index">0{index + 1}</span><div><span>{label}</span><small>{detail}</small></div><strong>{scores[key]}</strong></div>)}
+        <div className="score-metric rank-metric"><span className="metric-index">05</span><div><span>Cohort rank</span><small>{hasCohortRank ? `Ahead of ${scores.percentileBenchmark}% of similar profiles` : "Not enough comparable profiles yet."}</small></div>{hasCohortRank ? <strong>{scores.percentileBenchmark}<small>%</small></strong> : <strong aria-label="Not enough comparable profiles yet">N/A</strong>}{percentileColdStart ? <em>{percentileSampleSize} comparable {percentileSampleSize === 1 ? "profile" : "profiles"} so far</em> : null}</div>
       </div>
     </section>
   );

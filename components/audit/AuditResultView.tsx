@@ -12,10 +12,10 @@ type AuditResultViewProps = {
 /** Renders a completed audit response without making backend calls. */
 export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.Element {
   return (
-    <div className="grid two">
-      <div className="grid">
+    <div className="audit-report-layout">
+      <div className="audit-report-main">
         {audit.intensityDowngraded && audit.flags.beginnerAccount ? (
-          <div className="panel downgrade-notice" role="status">
+          <div className="downgrade-notice" role="status">
             Brutal and Hell are capped at Medium for beginner or low-activity accounts.
           </div>
         ) : null}
@@ -25,15 +25,16 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
           percentileColdStart={audit.percentileColdStart}
         />
         {audit.findings.length > 0 && <FindingsList findings={audit.findings} />}
-        <section className="panel roast-panel" aria-label="Roast verdict">
-          <p>{audit.roastText}</p>
+        <section className="roast-panel" aria-label="Roast verdict">
+          <div className="roast-label"><span className="section-kicker">The verdict</span><span>Local roast engine</span></div>
+          <p className="roast-copy">{audit.roastText}</p>
         </section>
-        <section className="grid fact-grid">
+        <section className="fact-grid">
           <FactList title="Strengths" items={audit.strengths} />
           <FactList title="Next fixes" items={audit.improvementAreas} />
         </section>
-        <section className="panel roadmap-panel">
-          <h2>Roadmap</h2>
+        <section className="roadmap-panel">
+          <div className="roadmap-heading"><div><span className="section-kicker">The next four weeks</span><h2>Roadmap</h2></div><span className="roadmap-line" /></div>
           <ol className="roadmap-list">
             {audit.roadmap.map((item) => (
               <li key={`${item.week}-${item.focus}`}>
@@ -47,7 +48,7 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
         </section>
         <OptOutControl username={audit.username} />
       </div>
-      <aside className="grid audit-aside">
+      <aside className="audit-aside">
         <noscript>
           <ShareCard username={audit.username} schemaVersion={audit.schemaVersion} />
         </noscript>

@@ -1,19 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { SITE_URL } from "@/lib/site";
 import { Providers } from "./providers";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SiteShell } from "@/components/layout/SiteShell";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-  display: "swap"
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+const inter = localFont({
+  src: "../workers/card/assets/fonts/Inter-Regular.woff",
+  variable: "--font-inter",
   display: "swap"
 });
 
@@ -47,14 +41,15 @@ const noFlashScript = `(function(){try{var t=localStorage.getItem('theme');if(t=
 
 export default function RootLayout({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <html className={`${geistSans.variable} ${geistMono.variable}`} lang="en">
+    <html className={inter.variable} lang="en" suppressHydrationWarning>
       <head>
         {/* Synchronous theme bootstrap — must run before body renders */}
         <script dangerouslySetInnerHTML={{ __html: noFlashScript }} />
       </head>
       <body>
-        <Providers>{children}</Providers>
-        <ThemeToggle />
+        <Providers>
+          <SiteShell>{children}</SiteShell>
+        </Providers>
       </body>
     </html>
   );
