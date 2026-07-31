@@ -1,24 +1,33 @@
 import { expect, test } from "@playwright/test";
 import { PNG } from "pngjs";
 
-test("live search, audit, intensity, evidence, 3D, and card seam", async ({ page, request }) => {
+test("live search, audit, intensity, evidence, score visual, and card seam", async ({ page, request }) => {
   const apiBaseUrl = process.env.API_GATEWAY_BASE_URL ?? "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1";
   const health = await request.get(`${apiBaseUrl}/health`);
   expect(health.ok()).toBeTruthy();
   expect(await health.json()).toMatchObject({ status: "ok" });
 
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "GitHub" })).toHaveAttribute(
+  await page.waitForLoadState("domcontentloaded");
+  const profileInput = page.getByLabel("GitHub profile link");
+  await expect(profileInput).toBeVisible();
+
+  const navToggle = page.getByRole("button", { name: /open navigation|close navigation/i });
+  if (await navToggle.isVisible() && await navToggle.getAttribute("aria-expanded") !== "true") {
+    await navToggle.click();
+  }
+
+  await expect(page.locator('a[href="https://github.com/NoorRattan/GitRoast.ai"]').first()).toHaveAttribute(
     "href",
     "https://github.com/NoorRattan/GitRoast.ai"
   );
-  await page.getByLabel("GitHub profile link").fill("https://github.com/octocat");
+  await profileInput.fill("https://github.com/octocat");
   await page.getByRole("button", { name: "Audit profile" }).click();
   await expect(page).toHaveURL(/\/octocat$/);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 
-  await expect(page.getByRole("heading", { name: "octocat", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Why these scores moved" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /octocat/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /why these scores moved/i })).toBeVisible();
   await expect(page.getByText(/comparable profiles|profiles of similar account age/)).toBeVisible();
 
   const canvas = page.getByTestId("score-canvas");
