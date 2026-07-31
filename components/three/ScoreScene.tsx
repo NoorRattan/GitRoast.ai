@@ -1,12 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { Finding, Scores } from "@/lib/api-client";
 import { useMotionPreference } from "@/components/layout/MotionProvider";
-import { SceneErrorBoundary } from "@/components/scene/SceneErrorBoundary";
-
-const ScoreFieldCanvas = dynamic(() => import("./ScoreFieldCanvas"), { ssr: false });
 
 const baseScores: Array<[keyof Scores, string, string]> = [
   ["profileStrength", "Profile", "#d69a43"],
@@ -20,7 +16,6 @@ export default function ScoreScene({
   scores,
   username,
   schemaVersion,
-  findings = [],
   percentileColdStart = false
 }: {
   scores: Scores;
@@ -29,26 +24,11 @@ export default function ScoreScene({
   findings?: Finding[];
   percentileColdStart?: boolean;
 }): JSX.Element {
-  const [webglAvailable, setWebglAvailable] = useState(false);
   const { motionEnabled } = useMotionPreference();
   const orderedScores = useMemo(() => percentileColdStart ? baseScores : [...baseScores, rankScore], [percentileColdStart]);
   const signature = orderedScores.map(([key]) => scores[key]).join("-");
-  const findingsPerBar = useMemo(() => orderedScores.map(([key]) => (
-    key === "percentileBenchmark" ? [] : findings.filter((finding) => finding.contributesTo === key)
-  )), [findings, orderedScores]);
 
-  useEffect(() => {
-    try {
-      const canvas = document.createElement("canvas");
-      setWebglAvailable(typeof window.WebGLRenderingContext !== "undefined" && Boolean(canvas.getContext("webgl")));
-    } catch {
-      setWebglAvailable(false);
-    }
-  }, []);
-
-  const ariaLabel = !motionEnabled
-    ? "Static score field"
-    : "Interactive 3D score field. Hover a bar to inspect evidence.";
+  const ariaLabel = "Readable score field";
 
   return (
     <section
@@ -65,17 +45,11 @@ export default function ScoreScene({
           <span className="section-kicker">Signal topology</span>
           <h2>Where the profile holds.</h2>
         </div>
-        <span className="scene-status"><span /> {webglAvailable ? "Interactive" : "Readable fallback"}</span>
+        <span className="scene-status"><span /> Readable fallback</span>
       </div>
       <div className="score-scene-stage">
-        <div className="scene-canvas-shell" data-testid="score-canvas" aria-hidden={webglAvailable ? "true" : undefined}>
-          {webglAvailable ? (
-            <SceneErrorBoundary fallback={<FallbackBars scores={scores} orderedScores={orderedScores} />}>
-              <ScoreFieldCanvas scores={scores} orderedScores={orderedScores} findingsPerBar={findingsPerBar} reducedMotion={!motionEnabled} />
-            </SceneErrorBoundary>
-          ) : (
-            <FallbackBars scores={scores} orderedScores={orderedScores} />
-          )}
+        <div className="scene-canvas-shell" data-testid="score-canvas">
+          <FallbackBars scores={scores} orderedScores={orderedScores} />
         </div>
         <div className="scene-grid-lines" aria-hidden="true" />
       </div>
