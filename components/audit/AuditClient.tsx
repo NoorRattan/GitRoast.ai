@@ -17,7 +17,11 @@ const ScoreScene = dynamic(() => import("@/components/three/ScoreScene"), {
 /** Client-side audit runner used only after the server cache-read path has rendered immediately. */
 export function AuditClient({ username, initialAudit }: { username: string; initialAudit: AuditResult | null }): JSX.Element {
   const [intensity, setIntensity] = useState<RoastIntensity>(initialAudit?.roastIntensityRequested ?? "medium");
-  const initialMatchesIntensity = initialAudit?.roastIntensityRequested === intensity;
+  // Audits created before evidence collection existed are incomplete. Keep their
+  // shell visible, but refresh them rather than treating legacy cached data as final.
+  const initialMatchesIntensity = initialAudit?.roastIntensityRequested === intensity
+    && Array.isArray(initialAudit.findings)
+    && initialAudit.findings.length > 0;
   const query = useQuery({
     queryKey: ["audit", username, intensity],
     queryFn: () => requestAudit(username, intensity),

@@ -66,6 +66,26 @@ describe("AuditClient", () => {
     expect(screen.getByText(/8 comparable profiles/)).toBeInTheDocument();
   });
 
+  it("refreshes an incomplete legacy cached audit even when its intensity matches", async () => {
+    const initial = audit({
+      roastIntensityRequested: "medium",
+      roastIntensityApplied: "medium",
+      intensityDowngraded: false,
+      findings: []
+    });
+    requestAudit.mockResolvedValueOnce(audit({
+      roastIntensityRequested: "medium",
+      roastIntensityApplied: "medium",
+      intensityDowngraded: false,
+      roastText: "Refreshed evidence"
+    }));
+
+    renderWithQuery(<AuditClient username="newstarter" initialAudit={initial} />);
+
+    await waitFor(() => expect(requestAudit).toHaveBeenCalledWith("newstarter", "medium"));
+    expect(await screen.findByText("Refreshed evidence")).toBeInTheDocument();
+  });
+
   it("suppresses cohort rank percentages while the comparable sample is too small", () => {
     renderWithQuery(<AuditClient username="newstarter" initialAudit={audit({
       scores: {
