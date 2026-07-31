@@ -26,9 +26,14 @@ class StubAsyncClient:
     def __init__(self, responses):
         self.responses = list(responses)
         self.calls = []
+        self.get_calls = []
 
     async def post(self, url, **kwargs):
         self.calls.append((url, kwargs))
+        return self.responses.pop(0)
+
+    async def get(self, url, **kwargs):
+        self.get_calls.append((url, kwargs))
         return self.responses.pop(0)
 
 
@@ -67,7 +72,7 @@ def test_parse_profile_response_handles_fixture_shapes(load_github_fixture, fixt
 def test_profile_query_and_parser_use_real_github_fields(load_github_fixture):
     assert "pinnedItems(first: 6, types: REPOSITORY)" in PROFILE_QUERY
     assert "readmeBlob: object(expression: $expression)" in README_QUERY
-    assert "oldestHistory: history(last: 1)" in PROFILE_QUERY
+    assert "oldestHistory" not in PROFILE_QUERY
     assert "readmeBlob" not in PROFILE_QUERY
     assert "isPinned" not in PROFILE_QUERY
 
@@ -128,13 +133,9 @@ def test_parse_profile_response_keeps_oldest_default_branch_commit():
                                                 }
                                             ],
                                         },
-                                        "oldestHistory": {
-                                            "nodes": [
-                                                {"committedDate": "2020-01-01T00:00:00Z"}
-                                            ]
-                                        },
                                     }
                                 },
+                                "first_commit_date": "2020-01-01T00:00:00Z",
                                 "rootTree": {"entries": []},
                             }
                         ]
@@ -147,8 +148,60 @@ def test_parse_profile_response_keeps_oldest_default_branch_commit():
     assert profile["repos"][0]["first_commit_date"] == "2020-01-01T00:00:00Z"
 
 
+async def test_query_user_profile_fetches_oldest_commit_for_long_default_branch_history():
+    profile_payload = {
+        "data": {
+            "user": {
+                "login": "longrunner",
+                "createdAt": "2019-01-01T00:00:00Z",
+                "avatarUrl": None,
+                "pullRequests": {"totalCount": 0},
+                "pinnedItems": {"nodes": []},
+                "repositories": {
+                    "pageInfo": {"hasNextPage": False, "endCursor": None},
+                    "nodes": [
+                        {
+                            "name": "flagship",
+                            "isFork": False,
+                            "isPrivate": False,
+                            "isArchived": False,
+                            "rootTree": {"entries": []},
+                            "languages": {"edges": []},
+                            "defaultBranchRef": {
+                                "target": {
+                                    "history": {
+                                        "totalCount": 500,
+                                        "nodes": [{"committedDate": "2026-07-01T00:00:00Z", "messageHeadline": "Recent change"}],
+                                    }
+                                }
+                            },
+                        }
+                    ],
+                },
+            }
+        }
+    }
+    stub = StubAsyncClient(
+        [
+            StubResponse(200, profile_payload),
+            StubResponse(200, [{"commit": {"committer": {"date": "2026-07-01T00:00:00Z"}}}], headers={"Link": '<https://api.github.com/repos/longrunner/flagship/commits?per_page=1&page=500>; rel="last"'}),
+            StubResponse(200, [{"commit": {"committer": {"date": "2020-01-01T00:00:00Z"}}}]),
+        ]
+    )
+    client = GitHubGraphQLClient("token", stub, max_repos=1)
+
+    profile = await client.query_user_profile("longrunner")
+
+    assert profile["repos"][0]["first_commit_date"] == "2020-01-01T00:00:00Z"
+    assert len(stub.get_calls) == 2
+    assert stub.get_calls[1][1]["params"] == {"per_page": "1", "page": "500"}
+
+
 async def test_query_user_profile_uses_injected_client_and_caps_whale_repos(load_github_fixture):
-    stub = StubAsyncClient([StubResponse(200, load_github_fixture("whale_profile.json"))])
+    payload = load_github_fixture("whale_profile.json")
+    for repo in payload["data"]["user"]["repositories"]["nodes"]:
+        repo["first_commit_date"] = "2020-01-01T00:00:00Z"
+    stub = StubAsyncClient([StubResponse(200, payload)])
     client = GitHubGraphQLClient("token", stub, max_repos=3)
 
     profile = await client.query_user_profile("whaledev")

@@ -1,8 +1,9 @@
 import asyncio
 import base64
+import re
 from dataclasses import dataclass
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 
@@ -88,11 +89,6 @@ query GitRoastProfile($login: String!, $repoPageSize: Int!, $after: String, $lan
                   messageHeadline
                 }
               }
-              oldestHistory: history(last: 1) {
-                nodes {
-                  committedDate
-                }
-              }
             }
           }
         }
@@ -170,6 +166,7 @@ class GitHubGraphQLClient:
                 break
 
         profile = parse_profile_response({"data": {"user": merged_user}}, max_repos=request.max_repos)
+        await self._hydrate_first_commit_dates(profile, request)
         await self._hydrate_readmes(profile, request)
         return profile
 
@@ -260,11 +257,63 @@ class GitHubGraphQLClient:
             repo["readme_fetched"] = True
             repo["has_coverage_badge"] = _has_coverage_badge(readme_text)
 
+    async def _hydrate_first_commit_dates(self, profile: dict[str, Any], request: GitHubProfileRequest) -> None:
+        """Fill the default-branch lower bound without invalid GraphQL backward pagination.
+
+        The profile query already includes up to 20 newest commits. For short histories,
+        its final node is the oldest commit. Longer histories need one lightweight REST
+        page request plus, when paginated, a single request for the last page.
+        """
+        for repo in profile["repos"]:
+            if repo.get("is_fork") or not repo.get("name") or repo.get("first_commit_date"):
+                continue
+            commit_dates = repo.get("commit_dates") or []
+            commit_count = int(repo.get("commit_count") or 0)
+            if commit_dates and commit_count <= len(commit_dates):
+                repo["first_commit_date"] = commit_dates[-1]
+                continue
+            if commit_count > 0:
+                first_commit_date = await self._fetch_oldest_default_branch_commit(
+                    request.username,
+                    str(repo["name"]),
+                )
+                if first_commit_date:
+                    repo["first_commit_date"] = first_commit_date
+
+    async def _fetch_oldest_default_branch_commit(self, owner: str, repo: str) -> str | None:
+        response = await self._request_rest_response(
+            f"/repos/{owner}/{repo}/commits",
+            params={"per_page": "1"},
+        )
+        commits = response.json()
+        if not isinstance(commits, list) or not commits:
+            return None
+
+        last_page = _last_link_page(response.headers.get("Link"))
+        if last_page is not None:
+            response = await self._request_rest_response(
+                f"/repos/{owner}/{repo}/commits",
+                params={"per_page": "1", "page": str(last_page)},
+            )
+            commits = response.json()
+            if not isinstance(commits, list) or not commits:
+                return None
+        commit = commits[0] if isinstance(commits[0], dict) else {}
+        metadata = commit.get("commit") if isinstance(commit, dict) else {}
+        committer = metadata.get("committer") if isinstance(metadata, dict) else {}
+        author = metadata.get("author") if isinstance(metadata, dict) else {}
+        return str((committer or {}).get("date") or (author or {}).get("date") or "") or None
+
     async def execute(self, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
         async with self._semaphore:
             return await self._execute_serialized(query, variables or {})
 
     async def _request_rest(self, path: str, *, params: dict[str, str] | None = None) -> dict[str, Any]:
+        response = await self._request_rest_response(path, params=params)
+        payload = response.json()
+        return payload if isinstance(payload, dict) else {}
+
+    async def _request_rest_response(self, path: str, *, params: dict[str, str] | None = None):
         async with self._semaphore:
             response = await self._http_client.get(
                 f"{GITHUB_REST_URL}{path}",
@@ -296,7 +345,7 @@ class GitHubGraphQLClient:
                 status_code=response.status_code,
                 retryable=False,
             )
-        return response.json()
+        return response
 
     async def _execute_serialized(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         undocumented_failures = 0
@@ -431,6 +480,21 @@ def _parse_repo(repo: dict[str, Any], *, pinned_names: set[str]) -> dict[str, An
 def _has_coverage_badge(readme_text: str) -> bool:
     readme_lower = readme_text.lower()
     return any(marker in readme_lower for marker in ("codecov", "coveralls", "coverage"))
+
+
+def _last_link_page(link_header: str | None) -> int | None:
+    if not link_header:
+        return None
+    for url, relation in re.findall(r'<([^>]+)>;\s*rel="([^"]+)"', link_header):
+        if relation != "last":
+            continue
+        page = parse_qs(urlsplit(url).query).get("page", [None])[0]
+        try:
+            parsed_page = int(page) if page is not None else None
+        except ValueError:
+            return None
+        return parsed_page if parsed_page and parsed_page > 1 else None
+    return None
 
 
 def _readme_path(repo: dict[str, Any]) -> str | None:
