@@ -28,7 +28,9 @@ test("live search, audit, intensity, evidence, score visual, and card seam", asy
 
   await expect(page.getByRole("heading", { name: /octocat/i })).toBeVisible();
   await expect(page.getByRole("heading", { name: /why these signals moved/i })).toBeVisible();
-  await expect(page.getByText(/comparable profiles|profiles of similar account age/)).toBeVisible();
+  const cohortRank = page.locator(".rank-metric");
+  await expect(cohortRank).toHaveCount(1);
+  await expect(cohortRank).toContainText(/comparable profiles|similar profiles/);
 
   const canvas = page.getByTestId("score-canvas");
   await expect(canvas).toBeVisible();
