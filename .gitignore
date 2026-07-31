@@ -1,5 +1,8 @@
 .env
+.env.*
+!.env.example
 .dev.vars
+.dev.vars.*
 .venv/
 node_modules/
 .next/

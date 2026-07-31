@@ -7,6 +7,7 @@ from app.services.github_client import (
     GitHubRateLimitError,
     PROFILE_QUERY,
     README_QUERY,
+    parse_github_repo_url,
     parse_profile_response,
 )
 
@@ -66,6 +67,7 @@ def test_parse_profile_response_handles_fixture_shapes(load_github_fixture, fixt
 def test_profile_query_and_parser_use_real_github_fields(load_github_fixture):
     assert "pinnedItems(first: 6, types: REPOSITORY)" in PROFILE_QUERY
     assert "readmeBlob: object(expression: $expression)" in README_QUERY
+    assert "oldestHistory: history(last: 1)" in PROFILE_QUERY
     assert "readmeBlob" not in PROFILE_QUERY
     assert "isPinned" not in PROFILE_QUERY
 
@@ -76,6 +78,73 @@ def test_profile_query_and_parser_use_real_github_fields(load_github_fixture):
     assert "Installation" in repos["api-service"]["readme_text"]
     assert repos["api-service"]["has_coverage_badge"] is True
     assert repos["infra-playbook"]["is_pinned"] is False
+
+
+@pytest.mark.parametrize(
+    "repo_url",
+    [
+        "http://github.com/example/repo",
+        "https://github.com@attacker.example/example/repo",
+        "https://github.com/example/repo?redirect=https://attacker.example",
+        "https://github.com/example/repo/extra",
+        "https://api.github.com/example/repo",
+    ],
+)
+def test_parse_github_repo_url_rejects_untrusted_or_ambiguous_urls(repo_url):
+    with pytest.raises(Exception):
+        parse_github_repo_url(repo_url)
+
+
+def test_parse_github_repo_url_canonicalizes_dot_git_suffix():
+    assert parse_github_repo_url("https://github.com/example/repo.git") == ("example", "repo")
+
+
+def test_parse_profile_response_keeps_oldest_default_branch_commit():
+    profile = parse_profile_response(
+        {
+            "data": {
+                "user": {
+                    "login": "longrunner",
+                    "createdAt": "2019-01-01T00:00:00Z",
+                    "avatarUrl": None,
+                    "pullRequests": {"totalCount": 0},
+                    "pinnedItems": {"nodes": []},
+                    "repositories": {
+                        "nodes": [
+                            {
+                                "name": "flagship",
+                                "isFork": False,
+                                "isPrivate": False,
+                                "isArchived": False,
+                                "languages": {"edges": []},
+                                "defaultBranchRef": {
+                                    "target": {
+                                        "history": {
+                                            "totalCount": 500,
+                                            "nodes": [
+                                                {
+                                                    "committedDate": "2026-07-01T00:00:00Z",
+                                                    "messageHeadline": "Add release verification",
+                                                }
+                                            ],
+                                        },
+                                        "oldestHistory": {
+                                            "nodes": [
+                                                {"committedDate": "2020-01-01T00:00:00Z"}
+                                            ]
+                                        },
+                                    }
+                                },
+                                "rootTree": {"entries": []},
+                            }
+                        ]
+                    },
+                }
+            }
+        }
+    )
+
+    assert profile["repos"][0]["first_commit_date"] == "2020-01-01T00:00:00Z"
 
 
 async def test_query_user_profile_uses_injected_client_and_caps_whale_repos(load_github_fixture):

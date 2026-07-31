@@ -92,6 +92,8 @@ def route_harness(required_env, load_github_fixture):
             "opt_out": InMemoryFixedWindowLimiter(100, 3600),
             "get_audit": InMemoryFixedWindowLimiter(100, 3600),
             "card_data": InMemoryFixedWindowLimiter(100, 3600),
+            "admin_auth": InMemoryFixedWindowLimiter(100, 3600),
+            "github_capacity": InMemoryFixedWindowLimiter(100, 3600),
         }
     )
 
@@ -106,7 +108,7 @@ def route_harness(required_env, load_github_fixture):
     app.dependency_overrides[github_client_dependency] = lambda: github
     app.dependency_overrides[rate_limiters_dependency] = lambda: limiters
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"x-gitroast-gateway-secret": "test-gateway-secret", "x-gitroast-client-ip": "203.0.113.10"}) as client:
         client.app.state.session_factory = session_factory
         client.app.state.github_client = github
         client.app.state.cache_client = redis
@@ -339,6 +341,18 @@ def test_admin_requires_basic_auth_before_listing_reviews(route_harness):
     assert right.status_code == 200
 
 
+def test_admin_auth_rate_limit_runs_before_credential_validation(route_harness):
+    h = route_harness
+    h["limiters"]._limiters["admin_auth"] = InMemoryFixedWindowLimiter(2, 3600)
+
+    h["client"].get("/api/v1/admin/reviews", auth=("admin", "wrong"))
+    h["client"].get("/api/v1/admin/reviews", auth=("admin", "wrong"))
+    blocked = h["client"].get("/api/v1/admin/reviews", auth=("admin", "password"))
+
+    assert blocked.status_code == 429
+    assert blocked.headers["Retry-After"]
+
+
 def test_admin_can_approve_and_reject_reviews(route_harness):
     h = route_harness
 
@@ -400,6 +414,9 @@ def test_public_rate_limiters_block_n_plus_one_and_reset(route_harness, method, 
     assert second.status_code != 429
     assert third.status_code == 429
     assert third.json()["error"]["code"] == "rate_limited"
+    assert third.headers["RateLimit-Limit"] == "2"
+    assert third.headers["RateLimit-Remaining"] == "0"
+    assert third.headers["Retry-After"]
 
     h["limiters"]._limiters[policy].reset()
     after_reset = request(path, json=json_body) if json_body is not None else request(path)

@@ -12,6 +12,8 @@
     "lint": "eslint . --ext .js,.mjs,.ts,.tsx --max-warnings=0",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "test:frontend": "vitest run",
+    "test:gateway": "vitest run workers/gateway/src/index.test.ts",
+    "gateway:check": "wrangler deploy --config workers/gateway/wrangler.toml --dry-run --outdir workers/gateway/dist --env preview",
     "test:e2e:live": "playwright test",
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },

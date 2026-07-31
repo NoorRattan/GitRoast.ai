@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 10
     env:
       PLAYWRIGHT_BASE_URL: https://gitroast-ai-frontend.jnoorrattan.workers.dev
+      API_GATEWAY_BASE_URL: https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

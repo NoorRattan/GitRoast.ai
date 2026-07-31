@@ -67,7 +67,10 @@ def _compute_metrics(profile: dict[str, Any], original_repos: list[dict[str, Any
     commit_messages = [message for repo in original_repos for message in repo.get("commit_messages", [])]
     commit_dates = [_parse_datetime(date) for repo in original_repos for date in repo.get("commit_dates", [])]
     commit_dates = [date for date in commit_dates if date is not None]
-    first_commit = min(commit_dates) if commit_dates else None
+    first_commit_bounds = [_parse_datetime(repo.get("first_commit_date")) for repo in original_repos]
+    first_commit_bounds = [date for date in first_commit_bounds if date is not None]
+    first_commit_candidates = commit_dates + first_commit_bounds
+    first_commit = min(first_commit_candidates) if first_commit_candidates else None
     weeks_since_first = max(1, math.ceil(((now - first_commit).days if first_commit else 0) / 7))
     active_weeks = len({date.isocalendar()[:2] for date in commit_dates})
 
@@ -104,6 +107,7 @@ def _compute_metrics(profile: dict[str, Any], original_repos: list[dict[str, Any
         "ci_hygiene_gap": 1.0 - _ci_hygiene_score(original_repos),
         "graveyard_ratio": _safe_ratio(len(graveyard_repos), original_count),
         "active_weeks_ratio": _safe_ratio(active_weeks, weeks_since_first),
+        "first_commit_bound_available": bool(first_commit_bounds),
         "generic_commit_ratio": _safe_ratio(len(generic_messages), len(commit_messages)),
         "total_commits": total_commits,
         "external_pr_count": int(profile.get("external_pr_count", 0)),
@@ -152,7 +156,7 @@ def _findings(metrics: dict[str, Any]) -> list[dict[str, Any]]:
     candidates = [
         _finding(FindingMetric.graveyard_ratio, metrics["graveyard_ratio"], "project_depth", f"{metrics['graveyard_ratio']:.0%} of original repos have one commit or less"),
         _finding(FindingMetric.generic_commit_ratio, metrics["generic_commit_ratio"], "commit_consistency", f"{metrics['generic_commit_ratio']:.0%} of sampled commit messages are generic"),
-        _finding(FindingMetric.active_weeks_ratio, metrics["active_weeks_ratio"], "commit_consistency", f"Activity appears in {metrics['active_weeks_ratio']:.0%} of weeks since the first sampled commit"),
+        _finding(FindingMetric.active_weeks_ratio, metrics["active_weeks_ratio"], "commit_consistency", _active_weeks_detail(metrics)),
         _finding(FindingMetric.fork_ratio, metrics["fork_ratio"], "profile_strength", f"{metrics['fork_ratio']:.0%} of visible repos are forks"),
         _finding(FindingMetric.license_coverage, metrics["license_coverage"], "profile_strength", f"{metrics['license_coverage']:.0%} of original repos include license metadata"),
         _finding(FindingMetric.pinned_curation_mismatch, metrics["pinned_curation_mismatch"], "profile_strength", f"Pinned repos match {1 - metrics['pinned_curation_mismatch']:.0%} of the strongest visible repos"),
@@ -163,6 +167,12 @@ def _findings(metrics: dict[str, Any]) -> list[dict[str, Any]]:
     ]
     candidates.sort(key=lambda item: item["_deviation"], reverse=True)
     return [{key: value for key, value in item.items() if key != "_deviation"} for item in candidates[:6]]
+
+
+def _active_weeks_detail(metrics: dict[str, Any]) -> str:
+    if metrics["first_commit_bound_available"]:
+        return f"Sampled activity appears in {metrics['active_weeks_ratio']:.0%} of weeks since the oldest default-branch commit"
+    return f"Activity appears in {metrics['active_weeks_ratio']:.0%} of weeks since the first sampled commit"
 
 
 def _finding(metric: FindingMetric, value: float, contributes_to: str, detail: str) -> dict[str, Any]:

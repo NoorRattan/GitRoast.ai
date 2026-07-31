@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { PNG } from "pngjs";
 
 test("live search, audit, intensity, evidence, 3D, and card seam", async ({ page, request }) => {
-  const health = await request.get("https://gitroast-ai.onrender.com/api/v1/health");
+  const apiBaseUrl = process.env.API_GATEWAY_BASE_URL ?? "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1";
+  const health = await request.get(`${apiBaseUrl}/health`);
   expect(health.ok()).toBeTruthy();
   expect(await health.json()).toMatchObject({ status: "ok" });
 

@@ -2,6 +2,7 @@ import asyncio
 import base64
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -87,6 +88,11 @@ query GitRoastProfile($login: String!, $repoPageSize: Int!, $after: String, $lan
                   messageHeadline
                 }
               }
+              oldestHistory: history(last: 1) {
+                nodes {
+                  committedDate
+                }
+              }
             }
           }
         }
@@ -168,6 +174,10 @@ class GitHubGraphQLClient:
         return profile
 
     async def query_repository_evidence(self, repo_url: str) -> dict[str, Any]:
+        revision = await self.query_repository_revision(repo_url)
+        return await self.query_repository_evidence_for_revision(revision)
+
+    async def query_repository_revision(self, repo_url: str) -> dict[str, str]:
         owner, repo = parse_github_repo_url(repo_url)
         repository = await self._request_rest(f"/repos/{owner}/{repo}")
         if repository.get("private"):
@@ -175,6 +185,19 @@ class GitHubGraphQLClient:
         default_branch = str(repository.get("default_branch") or "HEAD")
         commit = await self._request_rest(f"/repos/{owner}/{repo}/commits/{default_branch}")
         commit_sha = str(commit.get("sha") or default_branch)
+        return {
+            "repo_url": f"https://github.com/{owner}/{repo}",
+            "owner": owner,
+            "name": repo,
+            "default_branch": default_branch,
+            "commit_sha": commit_sha,
+        }
+
+    async def query_repository_evidence_for_revision(self, revision: dict[str, str]) -> dict[str, Any]:
+        owner = revision["owner"]
+        repo = revision["name"]
+        default_branch = revision["default_branch"]
+        commit_sha = revision["commit_sha"]
         tree = await self._request_rest(f"/repos/{owner}/{repo}/git/trees/{commit_sha}", params={"recursive": "1"})
         entries = [
             {
@@ -203,7 +226,7 @@ class GitHubGraphQLClient:
             )
 
         return {
-            "repo_url": f"https://github.com/{owner}/{repo}",
+            "repo_url": revision["repo_url"],
             "owner": owner,
             "name": repo,
             "default_branch": default_branch,
@@ -246,6 +269,7 @@ class GitHubGraphQLClient:
             response = await self._http_client.get(
                 f"{GITHUB_REST_URL}{path}",
                 params=params,
+                follow_redirects=False,
                 headers={
                     "Authorization": f"Bearer {self._token}",
                     "Accept": "application/vnd.github+json",
@@ -356,11 +380,18 @@ def parse_profile_response(payload: dict[str, Any], *, max_repos: int | None = N
 def _parse_repo(repo: dict[str, Any], *, pinned_names: set[str]) -> dict[str, Any]:
     branch_target = ((repo.get("defaultBranchRef") or {}).get("target") or {})
     history = branch_target.get("history") or {}
+    oldest_history = branch_target.get("oldestHistory") or {}
     commit_nodes = history.get("nodes") or []
+    oldest_commit_nodes = oldest_history.get("nodes") or []
     root_tree = repo.get("rootTree") or repo.get("object") or {}
     entries = root_tree.get("entries") or []
     readme_fetched = "readmeBlob" in repo
     readme_text = str((repo.get("readmeBlob") or {}).get("text") or "")
+    first_commit_date = (
+        (oldest_commit_nodes[0] or {}).get("committedDate")
+        if oldest_commit_nodes
+        else repo.get("first_commit_date")
+    )
 
     return {
         "name": repo.get("name"),
@@ -389,6 +420,7 @@ def _parse_repo(repo: dict[str, Any], *, pinned_names: set[str]) -> dict[str, An
             if node.get("committedDate") or node.get("date")
         ]
         or list(repo.get("commit_dates", [])),
+        "first_commit_date": first_commit_date,
         "root_entries": [{"name": entry.get("name"), "type": entry.get("type")} for entry in entries],
         "readme_text": readme_text,
         "readme_fetched": readme_fetched,
@@ -410,14 +442,35 @@ def _readme_path(repo: dict[str, Any]) -> str | None:
 
 
 def parse_github_repo_url(repo_url: str) -> tuple[str, str]:
-    parts = repo_url.rstrip("/").split("/")
-    if len(parts) < 5 or parts[2].lower() != "github.com":
+    try:
+        parsed = urlsplit(repo_url)
+        valid_origin = (
+            parsed.scheme == "https"
+            and parsed.hostname == "github.com"
+            and parsed.port in {None, 443}
+            and parsed.username is None
+            and parsed.password is None
+            and not parsed.query
+            and not parsed.fragment
+        )
+    except ValueError:
+        valid_origin = False
+    if not valid_origin:
         raise GitHubClientError("Invalid GitHub repository URL", status_code=422)
-    owner = parts[3]
-    repo = parts[4].removesuffix(".git")
-    if not owner or not repo:
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) != 2:
+        raise GitHubClientError("Invalid GitHub repository URL", status_code=422)
+    owner, repo = parts
+    repo = repo.removesuffix(".git")
+    if not _github_name_valid(owner) or not _github_name_valid(repo):
         raise GitHubClientError("Invalid GitHub repository URL", status_code=422)
     return owner, repo
+
+
+def _github_name_valid(value: str) -> bool:
+    if not 1 <= len(value) <= 100:
+        return False
+    return all(character.isalnum() or character in {"-", "_", "."} for character in value)
 
 
 def select_evaluation_paths(entries: list[dict[str, Any]], *, limit: int = MAX_EVALUATION_FILES) -> list[str]:

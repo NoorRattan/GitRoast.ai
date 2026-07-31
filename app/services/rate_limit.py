@@ -1,4 +1,6 @@
 import asyncio
+from ipaddress import ip_address
+import logging
 import time
 from dataclasses import dataclass
 from typing import Protocol
@@ -6,6 +8,8 @@ from typing import Protocol
 from fastapi import Request
 
 from app.core.errors import APIError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -69,24 +73,58 @@ class InMemoryFixedWindowLimiter:
 
 
 class RateLimiterRegistry:
-    def __init__(self, limiters: dict[str, AsyncRateLimiter]) -> None:
+    def __init__(self, limiters: dict[str, AsyncRateLimiter], *, github_capacity_mode: str = "enforce") -> None:
         self._limiters = limiters
+        self._github_capacity_mode = github_capacity_mode
 
-    async def check(self, policy: str, request: Request) -> None:
+    async def check(self, policy: str, request: Request) -> RateLimitResult:
         limiter = self._limiters[policy]
         identifier = f"{policy}:{client_ip(request)}"
         result = await limiter.limit(identifier)
+        request.state.rate_limit_result = result
         if not result.allowed:
             raise APIError(429, "rate_limited", "Too many requests. Try again later.")
+        return result
+
+    async def check_global(self, policy: str, request: Request | None = None) -> RateLimitResult | None:
+        try:
+            result = await self._limiters[policy].limit(f"{policy}:global")
+        except Exception:
+            logger.warning("GitHub capacity guard unavailable; allowing request", exc_info=True, extra={"policy": policy})
+            return None
+        if request is not None:
+            request.state.capacity_limit_result = result
+        if not result.allowed:
+            if self._github_capacity_mode == "shadow":
+                logger.warning(
+                    "GitHub capacity guard would block request in shadow mode",
+                    extra={"policy": policy, "limit": result.limit, "remaining": result.remaining, "reset": result.reset},
+                )
+                return result
+            raise APIError(429, "capacity_limited", "GitHub capacity is temporarily exhausted. Try again later.")
+        return result
 
 
 def client_ip(request: Request) -> str:
-    # Uvicorn resolves proxy headers only for its configured trusted proxy
-    # addresses. Reading X-Forwarded-For again here would bypass that boundary.
-    return request.client.host if request.client else "unknown"
+    value = getattr(request.state, "gateway_client_ip", None)
+    return value if isinstance(value, str) and _valid_ip(value) else "unknown"
 
 
-def create_rate_limiters(redis_url: str, redis_token: str) -> RateLimiterRegistry:
+def _valid_ip(value: str) -> bool:
+    try:
+        ip_address(value)
+    except ValueError:
+        return False
+    return True
+
+
+def create_rate_limiters(
+    redis_url: str,
+    redis_token: str,
+    *,
+    github_capacity_per_hour: int,
+    github_capacity_mode: str,
+) -> RateLimiterRegistry:
     return RateLimiterRegistry(
         {
             "post_audit": UpstashFixedWindowLimiter(
@@ -124,5 +162,20 @@ def create_rate_limiters(redis_url: str, redis_token: str) -> RateLimiterRegistr
                 window_seconds=3600,
                 prefix="gitroast:ratelimit:project_evaluation",
             ),
-        }
+            "admin_auth": UpstashFixedWindowLimiter(
+                redis_url,
+                redis_token,
+                max_requests=10,
+                window_seconds=3600,
+                prefix="gitroast:ratelimit:admin_auth",
+            ),
+            "github_capacity": UpstashFixedWindowLimiter(
+                redis_url,
+                redis_token,
+                max_requests=github_capacity_per_hour,
+                window_seconds=3600,
+                prefix="gitroast:ratelimit:github_capacity",
+            ),
+        },
+        github_capacity_mode=github_capacity_mode,
     )

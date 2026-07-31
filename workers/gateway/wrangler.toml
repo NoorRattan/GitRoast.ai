@@ -1,0 +1,14 @@
+name = "gitroast-api-gateway"
+main = "src/index.ts"
+compatibility_date = "2026-07-31"
+
+[vars]
+ORIGIN_BASE_URL = "https://gitroast-ai.onrender.com"
+ALLOWED_ORIGIN = "https://gitroast-ai-frontend.jnoorrattan.workers.dev"
+
+[env.preview]
+name = "gitroast-api-gateway-preview"
+
+[env.preview.vars]
+ORIGIN_BASE_URL = "https://gitroast-ai.onrender.com"
+ALLOWED_ORIGIN = "https://gitroast-ai-frontend.jnoorrattan.workers.dev"

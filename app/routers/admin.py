@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,8 +10,18 @@ from app.core.security import require_admin
 from app.db.models import ReviewQueueItem, ReviewStatus
 from app.dependencies import db_session_dependency
 from app.models.api import RejectReviewRequest, ReviewStatusValue
+from app.dependencies import rate_limiters_dependency
+from app.services.rate_limit import RateLimiterRegistry
 
-router = APIRouter(prefix="/api/v1/admin", dependencies=[Depends(require_admin)])
+
+async def limit_admin_auth(
+    request: Request,
+    rate_limiters: RateLimiterRegistry = Depends(rate_limiters_dependency),
+) -> None:
+    await rate_limiters.check("admin_auth", request)
+
+
+router = APIRouter(prefix="/api/v1/admin", dependencies=[Depends(limit_admin_auth), Depends(require_admin)])
 
 
 @router.get("/reviews")

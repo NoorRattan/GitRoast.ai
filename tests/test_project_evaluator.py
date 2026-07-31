@@ -3,6 +3,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -35,8 +36,16 @@ class StubRepoClient:
         self.bundle = bundle
         self.calls = 0
 
-    async def query_repository_evidence(self, repo_url):
+    async def query_repository_revision(self, repo_url):
         self.calls += 1
+        return {
+            key: self.bundle[key]
+            for key in ("repo_url", "owner", "name", "default_branch", "commit_sha")
+        }
+
+    async def query_repository_evidence_for_revision(self, revision):
+        self.calls += 1
+        assert revision["commit_sha"] == self.bundle["commit_sha"]
         return self.bundle
 
 
@@ -125,6 +134,8 @@ def project_route_harness(required_env, repo_bundle):
             "get_audit": InMemoryFixedWindowLimiter(100, 3600),
             "card_data": InMemoryFixedWindowLimiter(100, 3600),
             "project_evaluation": InMemoryFixedWindowLimiter(100, 3600),
+            "admin_auth": InMemoryFixedWindowLimiter(100, 3600),
+            "github_capacity": InMemoryFixedWindowLimiter(100, 3600),
         }
     )
     app = create_app()
@@ -138,8 +149,8 @@ def project_route_harness(required_env, repo_bundle):
     app.dependency_overrides[github_client_dependency] = lambda: github
     app.dependency_overrides[rate_limiters_dependency] = lambda: limiters
 
-    with TestClient(app) as client:
-        yield {"client": client, "redis": redis, "github": github}
+    with TestClient(app, headers={"x-gitroast-gateway-secret": "test-gateway-secret", "x-gitroast-client-ip": "203.0.113.10"}) as client:
+        yield {"client": client, "redis": redis, "github": github, "limiters": limiters}
 
     asyncio.run(engine.dispose())
 
@@ -205,7 +216,7 @@ def test_project_evaluation_route_returns_strict_cached_schema(project_route_har
         "flags",
     }
     assert len(h["redis"].store) == 1
-    assert h["github"].calls == 2
+    assert h["github"].calls == 3
 
 
 def test_project_evaluation_rejects_non_github_url(project_route_harness):
@@ -219,3 +230,73 @@ def test_project_evaluation_rejects_non_github_url(project_route_harness):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_project_evaluation_returns_retry_metadata_when_shared_capacity_is_exhausted(project_route_harness):
+    h = project_route_harness
+    h["limiters"]._limiters["github_capacity"] = InMemoryFixedWindowLimiter(0, 3600)
+
+    response = h["client"].post(
+        "/api/v1/project-evaluation",
+        json={
+            "repo_url": "https://github.com/example/evaluator",
+            "problem_statement": "Evaluate repositories against a problem statement with strict evidence-based scoring.",
+        },
+    )
+
+    assert response.status_code == 429
+    assert response.json()["error"]["code"] == "capacity_limited"
+    assert response.headers["Retry-After"]
+
+
+@pytest.mark.asyncio
+async def test_concurrent_matching_evaluations_collect_evidence_once(monkeypatch, repo_bundle):
+    from app.models.api import ProjectEvaluationRequest
+    from app.routers import project_evaluation as route
+
+    stored = {}
+
+    async def get_cached(*_args):
+        return stored.get("value")
+
+    async def set_cached(*_args):
+        stored["value"] = _args[-1]
+
+    class RateLimiters:
+        async def check(self, *_args):
+            return None
+
+        async def check_global(self, *_args):
+            return None
+
+    class GitHub:
+        revision_calls = 0
+        evidence_calls = 0
+
+        async def query_repository_revision(self, _repo_url):
+            self.revision_calls += 1
+            return {key: repo_bundle[key] for key in ("repo_url", "owner", "name", "default_branch", "commit_sha")}
+
+        async def query_repository_evidence_for_revision(self, _revision):
+            self.evidence_calls += 1
+            await asyncio.sleep(0.01)
+            return repo_bundle
+
+    monkeypatch.setattr(route.cache, "get_project_evaluation", get_cached)
+    monkeypatch.setattr(route.cache, "set_project_evaluation", set_cached)
+    route._evaluation_locks.clear()
+    request = {"type": "http", "method": "POST", "path": "/api/v1/project-evaluation", "headers": [], "client": ("127.0.0.1", 1), "server": ("test", 80), "scheme": "http", "query_string": b"", "root_path": "", "http_version": "1.1"}
+    payload = ProjectEvaluationRequest(
+        repo_url="https://github.com/example/evaluator",
+        problem_statement="Evaluate repositories against a problem statement with strict evidence-based scoring.",
+    )
+    github = GitHub()
+
+    first, second = await asyncio.gather(
+        route.post_project_evaluation(payload, Request(request), object(), github, RateLimiters()),
+        route.post_project_evaluation(payload, Request(request), object(), github, RateLimiters()),
+    )
+
+    assert first == second
+    assert github.revision_calls == 2
+    assert github.evidence_calls == 1

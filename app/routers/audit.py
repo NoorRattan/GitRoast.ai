@@ -50,6 +50,7 @@ async def post_audit(
     audit_row: Audit | None = None
 
     if scores_entry is None:
+        await rate_limiters.check_global("github_capacity", request)
         try:
             profile = await github_client.query_user_profile(username)
         except GitHubClientError as exc:
@@ -244,6 +245,7 @@ def _schedule_stale_refresh_if_needed(
 
 async def _refresh_scores_task(app, username: str, key: str) -> None:
     try:
+        await app.state.rate_limiters.check_global("github_capacity")
         async with app.state.session_factory() as db:
             profile = await app.state.github_client.query_user_profile(username)
             scores_entry = score_profile(profile)

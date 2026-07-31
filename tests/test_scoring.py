@@ -53,3 +53,41 @@ def test_all_finding_metrics_are_producible_across_fixtures(load_github_fixture)
         produced.update(item["metric"] for item in _score(load_github_fixture, fixture_name)["findings"])
 
     assert produced == {metric.value for metric in FindingMetric}
+
+
+def test_active_weeks_ratio_uses_oldest_default_branch_commit_bound():
+    recent_profile = {
+        "username": "longrunner",
+        "created_at": "2019-01-01T00:00:00Z",
+        "external_pr_count": 2,
+        "repos": [
+            {
+                "name": "flagship",
+                "is_fork": False,
+                "has_license": True,
+                "disk_usage": 2000,
+                "stargazer_count": 0,
+                "is_pinned": True,
+                "languages": {"Python": 1000},
+                "commit_count": 500,
+                "commit_messages": ["Add production verification checklist"],
+                "commit_dates": ["2026-07-20T00:00:00Z"],
+                "first_commit_date": "2020-01-01T00:00:00Z",
+                "root_entries": [{"name": "tests", "type": "tree"}],
+                "readme_fetched": True,
+                "readme_text": "Installation\nUsage\nDemo\n![demo](demo.png)\n![badge](badge.svg)",
+                "has_coverage_badge": True,
+            }
+        ],
+    }
+    truncated_profile = {
+        **recent_profile,
+        "repos": [{key: value for key, value in recent_profile["repos"][0].items() if key != "first_commit_date"}],
+    }
+
+    bounded = score_profile(recent_profile, now=NOW)
+    truncated = score_profile(truncated_profile, now=NOW)
+
+    assert bounded["scores"]["commit_consistency"] < truncated["scores"]["commit_consistency"]
+    finding = next(item for item in bounded["findings"] if item["metric"] == "active_weeks_ratio")
+    assert "oldest default-branch commit" in finding["detail"]
