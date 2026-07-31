@@ -1,5 +1,6 @@
-import { ArrowDownRight, ArrowUpRight, FileCheck2, Fingerprint, Share2 } from "lucide-react";
+import { ArrowUpRight, FileCheck2, Fingerprint, Share2 } from "lucide-react";
 import Link from "next/link";
+import { LiveSignalMap } from "@/components/home/LiveSignalMap";
 import { Reveal } from "@/components/layout/Reveal";
 
 const methodItems = [
@@ -38,21 +39,7 @@ export default async function HomePage({
           </Reveal>
 
           <Reveal className="scan-console-wrap" delay={0.12}>
-            <div className="scan-console" aria-label="Live profile scan visualization">
-              <div className="scan-console-top"><span className="section-kicker">Live signal map</span><span className="live-chip"><i /> Ready</span></div>
-              <div className="scan-orbit" aria-hidden="true">
-                <div className="orbit-ring orbit-ring-one" />
-                <div className="orbit-ring orbit-ring-two" />
-                <div className="orbit-core"><span /><span /><span /></div>
-                <div className="orbit-node node-one" /><div className="orbit-node node-two" /><div className="orbit-node node-three" />
-              </div>
-              <div className="scan-readout">
-                <div><span>Surface</span><strong>Public profile</strong></div>
-                <div><span>Signals</span><strong>Evidence-linked</strong></div>
-                <div><span>Output</span><strong>Actionable roast</strong></div>
-              </div>
-              <div className="scan-console-bottom"><span><i className="status-dot" /> Waiting for a handle</span><Link href="#method">How it works <ArrowDownRight size={14} aria-hidden="true" /></Link></div>
-            </div>
+            <LiveSignalMap />
           </Reveal>
         </section>
 
