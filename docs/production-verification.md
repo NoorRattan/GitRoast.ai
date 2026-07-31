@@ -7,6 +7,7 @@ This file records the current public deployment targets for the repo. Stale cust
 | Service | Target | Status |
 |---|---|---|
 | Frontend | `https://gitroast-ai-frontend.jnoorrattan.workers.dev` | Live on Cloudflare Workers. |
+| API gateway | `https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1` | Only public entry point for protected API routes. |
 | Backend | `https://gitroast-ai.onrender.com` | Live on Render. `GET /health` returns `{"status":"ok"}`. |
 | Card Worker preview | `https://gitroast-card-preview.jnoorrattan.workers.dev` | Live on workers.dev. Cache-key behavior has been verified with versioned `?v=` URLs. |
 
@@ -17,15 +18,15 @@ Latest verified frontend Worker version: `8334444a-d5ea-4bb3-8a7f-9a56466126d4`.
 - Root `wrangler.jsonc` deploys the OpenNext frontend Worker to workers.dev with `workers_dev: true`.
 - Frontend deploy command: `npm run deploy`, which runs `npm run build:cloudflare` and `npm run deploy:direct`.
 - Direct frontend deploy command: `npm run deploy:direct`.
-- Frontend server and browser requests call the Render API directly through `NEXT_PUBLIC_API_BASE_URL`.
+- Frontend server and browser requests call the Cloudflare API gateway through `NEXT_PUBLIC_API_BASE_URL`; the gateway removes client-supplied forwarding headers and attaches the trusted client identity and private gateway secret upstream.
 - `render.yaml` defines the Render backend service and keeps secret values out of source with `sync: false`.
-- Backend required env vars are `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ALLOWED_ORIGINS`.
+- Backend required env vars are `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `GATEWAY_SHARED_SECRET`, and `ALLOWED_ORIGINS`.
 - Optional centralized error reporting uses `SENTRY_DSN` on Render and `NEXT_PUBLIC_SENTRY_DSN` during the frontend build. Without them, backend exceptions still reach Render logs and frontend failures reach the error boundary and browser console.
 - `ALLOWED_ORIGINS` is scoped to the live Workers.dev frontend origin.
-- The card Worker preview uses `https://gitroast-ai.onrender.com/api/v1` as its backend base URL.
+- The card Worker preview uses the Cloudflare API gateway as its backend base URL.
 - Render runs `alembic upgrade head` before Uvicorn starts. Application startup does not mutate schema with `create_all`.
-- Main-branch CI can deploy both Cloudflare Workers when the GitHub `production` environment contains `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
-- Render deploys automatically from `main` through `render.yaml`.
+- Main-branch CI deploys the gateway, frontend, card Worker, then Render in that order when the GitHub `production` environment contains `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GATEWAY_SHARED_SECRET`, and `RENDER_DEPLOY_HOOK`.
+- Set `GATEWAY_SHARED_SECRET` in Render before triggering its deploy hook. The backend intentionally fails fast if a required variable is absent.
 
 ## Cloudflare Build Notes
 
@@ -65,9 +66,11 @@ npm run deploy:direct
 - Search a real GitHub profile URL and confirm it redirects to the normalized username route.
 - Confirm a cold-path audit completes.
 - Revisit the same username and confirm cached audit behavior.
-- Confirm the animated score visual renders without browser console errors.
+- Confirm the score visual renders with its readable fallback and without browser console errors.
 - Confirm the share card image loads from the workers.dev card preview URL.
 - Opt out a test username; confirm `GET /api/v1/audit/{username}` returns `404` and `POST /api/v1/audit` returns `409`.
 - Reverse the opt-out with `DELETE /api/v1/opt-out/{username}` and confirm the username can be re-audited.
 - Log into the admin panel directly at `/admin` with production credentials and approve/reject a thin-finding review.
-- Hit `POST /api/v1/audit` rapidly from one IP and confirm rate limiting eventually blocks, then recovers after the window.
+- Hit `POST /api/v1/audit` rapidly through the API gateway from one IP and confirm `RateLimit-*` / `Retry-After` headers appear when the limit is reached, then recover after the window.
+- From two different real networks, repeat the gateway test and confirm independent rate-limit buckets. Client-supplied `CF-Connecting-IP` must not affect the result.
+- Confirm a direct protected Render API request returns the shared `403` error envelope. Never place the gateway secret in a browser, curl command, issue, or log.
