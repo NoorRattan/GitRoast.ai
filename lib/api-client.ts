@@ -88,7 +88,7 @@ export type AdminCredentials = {
 };
 
 const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-ai.onrender.com/api/v1"
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1"
 ).replace(/\/$/, "");
 const CARD_BASE_URL = process.env.NEXT_PUBLIC_CARD_BASE_URL ?? "https://gitroast-card-preview.jnoorrattan.workers.dev/card";
 
