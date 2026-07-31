@@ -27,7 +27,7 @@ test("live search, audit, intensity, evidence, score visual, and card seam", asy
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
 
   await expect(page.getByRole("heading", { name: /octocat/i })).toBeVisible();
-  await expect(page.getByRole("heading", { name: /why these scores moved/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /why these signals moved/i })).toBeVisible();
   await expect(page.getByText(/comparable profiles|profiles of similar account age/)).toBeVisible();
 
   const canvas = page.getByTestId("score-canvas");
