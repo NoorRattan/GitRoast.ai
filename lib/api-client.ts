@@ -87,9 +87,26 @@ export type AdminCredentials = {
   password: string;
 };
 
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1"
-).replace(/\/$/, "");
+const API_GATEWAY_BASE_URL = "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1";
+
+/**
+ * Browser requests must use the gateway: it supplies the trusted client
+ * identity and the private upstream credential. A direct Render URL bypasses
+ * that contract and fails in browsers at CORS preflight.
+ */
+export function resolveApiBaseUrl(configuredUrl = process.env.NEXT_PUBLIC_API_BASE_URL): string {
+  const normalized = (configuredUrl ?? API_GATEWAY_BASE_URL).replace(/\/$/, "");
+  try {
+    if (new URL(normalized).hostname.endsWith(".onrender.com")) {
+      return API_GATEWAY_BASE_URL;
+    }
+  } catch {
+    return API_GATEWAY_BASE_URL;
+  }
+  return normalized;
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 const CARD_BASE_URL = process.env.NEXT_PUBLIC_CARD_BASE_URL ?? "https://gitroast-card-preview.jnoorrattan.workers.dev/card";
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };

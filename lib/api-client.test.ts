@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildCardImageUrl, camelToSnake, fetchCachedAudit, requestAudit, snakeToCamel } from "./api-client";
+import { buildCardImageUrl, camelToSnake, fetchCachedAudit, requestAudit, resolveApiBaseUrl, snakeToCamel } from "./api-client";
 
 const auditPayload = {
   username: "newstarter",
@@ -45,6 +45,12 @@ describe("api-client translation", () => {
     });
 
     expect(translated).toEqual({ roast_intensity: "hell", nested_value: { cache_hit: true } });
+  });
+
+  it("keeps browser requests on the public gateway when a direct Render URL is configured", () => {
+    expect(resolveApiBaseUrl("https://gitroast-ai.onrender.com/api/v1")).toBe(
+      "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1"
+    );
   });
 
   it("returns null for cached audit 404s", async () => {
