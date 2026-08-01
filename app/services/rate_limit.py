@@ -77,10 +77,18 @@ class RateLimiterRegistry:
         self._limiters = limiters
         self._github_capacity_mode = github_capacity_mode
 
-    async def check(self, policy: str, request: Request) -> RateLimitResult:
+    async def check(self, policy: str, request: Request) -> RateLimitResult | None:
         limiter = self._limiters[policy]
         identifier = f"{policy}:{client_ip(request)}"
-        result = await limiter.limit(identifier)
+        try:
+            result = await limiter.limit(identifier)
+        except Exception:
+            logger.warning(
+                "Request rate limiter unavailable; allowing request",
+                exc_info=True,
+                extra={"policy": policy, "client_ip": client_ip(request)},
+            )
+            return None
         request.state.rate_limit_result = result
         if not result.allowed:
             raise APIError(429, "rate_limited", "Too many requests. Try again later.")

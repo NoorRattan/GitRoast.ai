@@ -24,6 +24,10 @@ from app.services.scoring_constants import (
 
 
 GENERIC_MESSAGE_REGEXES = tuple(re.compile(pattern, re.IGNORECASE) for pattern in GENERIC_COMMIT_MESSAGE_PATTERNS)
+CONVENTIONAL_COMMIT_REGEX = re.compile(
+    r"^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)\r\n]+\))?!?:\s+\S",
+    re.IGNORECASE,
+)
 
 
 def score_profile(profile: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
@@ -79,6 +83,7 @@ def _compute_metrics(profile: dict[str, Any], original_repos: list[dict[str, Any
         repo
         for repo in original_repos
         if int(repo.get("commit_count", 0)) <= 1
+        and int(repo.get("disk_usage", 0)) <= TRIVIAL_REPO_MAX_DISK_USAGE_KB
     ]
     trivial_commits = sum(
         int(repo.get("commit_count", 0))
@@ -196,7 +201,14 @@ def _readme_score(repos: list[dict[str, Any]]) -> float:
     for repo in sampled_repos:
         readme = str(repo.get("readme_text", ""))
         lower = readme.lower()
-        header_score = sum(1 for token in ("installation", "usage", "demo") if token in lower) / 3
+        headings = _markdown_headings(readme)
+        header_score = sum(
+            (
+                _has_heading(headings, ("installation", "install", "setup", "getting started", "quick start")),
+                _has_heading(headings, ("usage", "how to use", "run", "running", "examples")),
+                _has_heading(headings, ("demo", "preview", "screenshots")),
+            )
+        ) / 3
         length_score = min(len(readme) / 1200, 1.0)
         image_score = 1.0 if re.search(r"!\[[^\]]*]\([^)]+\.(png|jpg|jpeg|gif|webp)", readme, re.I) else 0.0
         badge_score = 1.0 if "shields.io" in lower or "badge" in lower else 0.0
@@ -261,9 +273,19 @@ def _is_beginner(metrics: dict[str, Any]) -> bool:
 
 def _is_generic_commit_message(message: str) -> bool:
     stripped = message.strip()
+    if CONVENTIONAL_COMMIT_REGEX.match(stripped):
+        return False
     if len(stripped) < GENERIC_COMMIT_MIN_LENGTH:
         return True
     return any(pattern.search(stripped) for pattern in GENERIC_MESSAGE_REGEXES)
+
+
+def _markdown_headings(markdown: str) -> list[str]:
+    return [heading.strip().lower() for heading in re.findall(r"(?m)^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$", markdown)]
+
+
+def _has_heading(headings: list[str], terms: tuple[str, ...]) -> bool:
+    return any(any(term in heading for term in terms) for heading in headings)
 
 
 def _account_age_months(created_at: str | None, now: datetime) -> int:

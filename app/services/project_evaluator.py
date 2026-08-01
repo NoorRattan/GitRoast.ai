@@ -13,10 +13,10 @@ from app.models.api import (
 )
 
 
-PROJECT_EVALUATOR_SCHEMA_VERSION = 1
+PROJECT_EVALUATOR_SCHEMA_VERSION = 2
 CALIBRATION_NOTE = (
-    "Most real-world repos score 45-70. 90+ requires exceptional, evidence-backed "
-    "performance across every category."
+    "This is a deterministic, evidence-limited review rather than a population-calibrated benchmark. "
+    "Use the cited repository evidence alongside the score."
 )
 CATEGORY_WEIGHTS = {
     "problem_statement_alignment": 25,
@@ -116,7 +116,7 @@ def compute_static_signals(files: list[dict[str, Any]], tree_files: list[dict[st
         "auth_markers": any(re.search(r"\b(auth|jwt|oauth|session|permission|authorize|basic)\b", text, re.I) for text in text_by_path.values()),
         "abuse_protection_markers": any(re.search(r"\b(rate.?limit|throttle|captcha|retry-after|fixedwindow)\b", text, re.I) for text in text_by_path.values()),
         "secret_findings": hardcoded_secret_findings(files),
-        "possible_stub_implementation": any(re.search(r"\b(todo|stub|mock|placeholder|fake data|lorem ipsum)\b", text, re.I) for text in text_by_path.values()),
+        "possible_stub_implementation": possible_stub_implementation(text_by_path),
         "cache_markers": any(re.search(r"\b(cache|memoize|revalidate|ttl|etag)\b", text, re.I) for text in text_by_path.values()),
         "pagination_batch_markers": any(re.search(r"\b(pagination|page_size|cursor|batch|limit|offset|first:|after:)\b", text, re.I) for text in text_by_path.values()),
         "async_markers": any(re.search(r"\b(async|await|Promise\.all|TaskGroup|gather)\b", text) for text in text_by_path.values()),
@@ -407,6 +407,15 @@ def first_readme(files: list[dict[str, Any]]) -> dict[str, Any] | None:
         if path.startswith("readme"):
             return file
     return None
+
+
+def possible_stub_implementation(text_by_path: dict[str, str]) -> bool:
+    for path, text in text_by_path.items():
+        if re.search(r"\b(todo|stub|placeholder|fake data|lorem ipsum)\b", text, re.I):
+            return True
+        if not is_test_file(path) and re.search(r"\bmock\b", text, re.I):
+            return True
+    return False
 
 
 def first_matching_file(files: list[dict[str, Any]], pattern: str, flags: int = 0) -> str:

@@ -68,6 +68,20 @@ async def test_github_capacity_guard_fails_open_when_its_limiter_errors(caplog):
 
 
 @pytest.mark.asyncio
+async def test_endpoint_rate_limiter_fails_open_when_its_limiter_errors(caplog):
+    class BrokenLimiter:
+        async def limit(self, _identifier):
+            raise RuntimeError("upstash unavailable")
+
+    registry = RateLimiterRegistry({"post_audit": BrokenLimiter()})
+
+    result = await registry.check("post_audit", _request())
+
+    assert result is None
+    assert "Request rate limiter unavailable" in caplog.text
+
+
+@pytest.mark.asyncio
 async def test_github_capacity_guard_shadows_a_would_be_block(caplog):
     registry = RateLimiterRegistry(
         {"github_capacity": InMemoryFixedWindowLimiter(0, 3600)},

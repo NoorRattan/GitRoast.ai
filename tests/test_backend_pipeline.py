@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 
 import pytest
@@ -165,6 +166,23 @@ def test_roast_cache_hit_skips_regeneration_and_github(route_harness, load_githu
     assert calls["count"] == 0
 
 
+def test_successful_audit_emits_structured_cache_telemetry(route_harness, load_github_fixture, caplog):
+    h = route_harness
+    caplog.set_level(logging.INFO, logger="app.routers.audit")
+    scores = score_fixture(load_github_fixture, "small_profile.json")
+    run(set_audit_scores(h["redis"], "cleanbuilder", SCHEMA_VERSION, scores))
+    run(set_audit_roast(h["redis"], "cleanbuilder", "mild", SCHEMA_VERSION, roast_payload("cached mild")))
+
+    response = h["client"].post("/api/v1/audit", json={"username": "cleanbuilder", "roast_intensity": "mild"})
+
+    assert response.status_code == 200
+    record = next(record for record in caplog.records if record.message == "audit completed")
+    assert record.username == "cleanbuilder"
+    assert record.score_cache_hit is True
+    assert record.roast_cache_hit is True
+    assert record.github_rate_limit_remaining is None
+
+
 def test_scores_hit_with_different_roast_intensity_generates_not_github(route_harness, load_github_fixture, monkeypatch):
     h = route_harness
     scores = score_fixture(load_github_fixture, "small_profile.json")
@@ -313,6 +331,18 @@ def test_card_data_reads_scores_only(route_harness, load_github_fixture):
         "scores": scores["scores"],
         "avatar_url": scores["avatar_url"],
     }
+
+
+def test_card_data_serves_previous_schema_during_score_cache_transition(route_harness, load_github_fixture):
+    h = route_harness
+    scores = score_fixture(load_github_fixture, "small_profile.json")
+    scores["schema_version"] = SCHEMA_VERSION - 1
+    run(set_audit_scores(h["redis"], "cleanbuilder", SCHEMA_VERSION - 1, scores))
+
+    response = h["client"].get("/api/v1/card-data/cleanbuilder")
+
+    assert response.status_code == 200
+    assert response.json()["schema_version"] == SCHEMA_VERSION - 1
 
 
 def test_opt_out_purges_cache_and_get_audit_returns_404(route_harness, load_github_fixture):

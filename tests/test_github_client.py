@@ -5,6 +5,7 @@ import pytest
 from app.services.github_client import (
     GitHubGraphQLClient,
     GitHubRateLimitError,
+    EXTERNAL_PULL_REQUESTS_QUERY,
     PROFILE_QUERY,
     README_QUERY,
     parse_github_repo_url,
@@ -72,6 +73,7 @@ def test_parse_profile_response_handles_fixture_shapes(load_github_fixture, fixt
 def test_profile_query_and_parser_use_real_github_fields(load_github_fixture):
     assert "pinnedItems(first: 6, types: REPOSITORY)" in PROFILE_QUERY
     assert "readmeBlob: object(expression: $expression)" in README_QUERY
+    assert "issueCount" in EXTERNAL_PULL_REQUESTS_QUERY
     assert "oldestHistory" not in PROFILE_QUERY
     assert "readmeBlob" not in PROFILE_QUERY
     assert "isPinned" not in PROFILE_QUERY
@@ -184,6 +186,7 @@ async def test_query_user_profile_fetches_oldest_commit_for_long_default_branch_
     stub = StubAsyncClient(
         [
             StubResponse(200, profile_payload),
+            StubResponse(200, {"data": {"search": {"issueCount": 2}}}),
             StubResponse(200, [{"commit": {"committer": {"date": "2026-07-01T00:00:00Z"}}}], headers={"Link": '<https://api.github.com/repos/longrunner/flagship/commits?per_page=1&page=500>; rel="last"'}),
             StubResponse(200, [{"commit": {"committer": {"date": "2020-01-01T00:00:00Z"}}}]),
         ]
@@ -193,6 +196,7 @@ async def test_query_user_profile_fetches_oldest_commit_for_long_default_branch_
     profile = await client.query_user_profile("longrunner")
 
     assert profile["repos"][0]["first_commit_date"] == "2020-01-01T00:00:00Z"
+    assert profile["external_pr_count"] == 2
     assert len(stub.get_calls) == 2
     assert stub.get_calls[1][1]["params"] == {"per_page": "1", "page": "500"}
 
@@ -201,14 +205,15 @@ async def test_query_user_profile_uses_injected_client_and_caps_whale_repos(load
     payload = load_github_fixture("whale_profile.json")
     for repo in payload["data"]["user"]["repositories"]["nodes"]:
         repo["first_commit_date"] = "2020-01-01T00:00:00Z"
-    stub = StubAsyncClient([StubResponse(200, payload)])
+    stub = StubAsyncClient([StubResponse(200, payload), StubResponse(200, {"data": {"search": {"issueCount": 4}}})])
     client = GitHubGraphQLClient("token", stub, max_repos=3)
 
     profile = await client.query_user_profile("whaledev")
 
     assert [repo["name"] for repo in profile["repos"]] == ["repo-newest", "repo-2", "repo-3"]
-    assert len(stub.calls) == 1
+    assert len(stub.calls) == 2
     assert stub.calls[0][1]["json"]["variables"]["repoPageSize"] == 3
+    assert stub.calls[1][1]["json"]["variables"]["query"] == "is:pr author:whaledev -user:whaledev"
 
 
 async def test_query_user_profile_paginates_large_repository_sets():
@@ -242,6 +247,7 @@ async def test_query_user_profile_paginates_large_repository_sets():
         [
             StubResponse(200, page("newer", "cursor-1", True)),
             StubResponse(200, page("older", None, False)),
+            StubResponse(200, {"data": {"search": {"issueCount": 1}}}),
         ]
     )
     client = GitHubGraphQLClient("token", stub, max_repos=2)
@@ -250,6 +256,7 @@ async def test_query_user_profile_paginates_large_repository_sets():
 
     assert [repo["name"] for repo in profile["repos"]] == ["newer", "older"]
     assert stub.calls[1][1]["json"]["variables"]["after"] == "cursor-1"
+    assert profile["external_pr_count"] == 1
 
 
 async def test_retry_after_is_respected_before_retry(load_github_fixture):
@@ -273,20 +280,56 @@ async def test_retry_after_is_respected_before_retry(load_github_fixture):
     assert len(stub.calls) == 2
 
 
-async def test_undocumented_secondary_limit_raises_after_third_failure():
+async def test_undocumented_secondary_limit_allows_three_retries_before_raising():
     slept = []
 
     async def fake_sleep(seconds):
         slept.append(seconds)
 
-    stub = StubAsyncClient([StubResponse(429), StubResponse(429), StubResponse(429)])
+    stub = StubAsyncClient([StubResponse(429), StubResponse(429), StubResponse(429), StubResponse(429)])
     client = GitHubGraphQLClient("token", stub, sleep=fake_sleep)
 
     with pytest.raises(GitHubRateLimitError):
         await client.execute("query { viewer { login } }")
 
-    assert slept == [1, 2]
-    assert len(stub.calls) == 3
+    assert slept == [1, 2, 4]
+    assert len(stub.calls) == 4
+
+
+async def test_query_user_profile_fails_safe_when_external_pr_lookup_is_unavailable(load_github_fixture, caplog):
+    payload = load_github_fixture("small_profile.json")
+    for repo in payload["data"]["user"]["repositories"]["nodes"]:
+        repo["first_commit_date"] = "2020-01-01T00:00:00Z"
+    stub = StubAsyncClient([StubResponse(200, payload), StubResponse(429), StubResponse(429), StubResponse(429), StubResponse(429)])
+    slept = []
+
+    async def fake_sleep(seconds):
+        slept.append(seconds)
+
+    client = GitHubGraphQLClient("token", stub, max_repos=3, sleep=fake_sleep)
+
+    profile = await client.query_user_profile("cleanbuilder")
+
+    assert profile["external_pr_count"] == 0
+    assert "beginner safeguard" in caplog.text
+    assert slept == [1, 2, 4]
+
+
+async def test_query_user_profile_records_last_known_github_rate_limit(load_github_fixture):
+    payload = load_github_fixture("small_profile.json")
+    for repo in payload["data"]["user"]["repositories"]["nodes"]:
+        repo["first_commit_date"] = "2020-01-01T00:00:00Z"
+    stub = StubAsyncClient(
+        [
+            StubResponse(200, payload, headers={"X-RateLimit-Remaining": "321"}),
+            StubResponse(200, {"data": {"search": {"issueCount": 4}}}, headers={"X-RateLimit-Remaining": "320"}),
+        ]
+    )
+    client = GitHubGraphQLClient("token", stub, max_repos=3)
+
+    await client.query_user_profile("cleanbuilder")
+
+    assert client.last_rate_limit_remaining == 320
 
 
 async def test_transient_server_failure_retries_before_success(load_github_fixture):

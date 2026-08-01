@@ -78,6 +78,7 @@ async def post_audit(
     intensity_applied = _apply_beginner_downgrade(payload.roast_intensity, scores_entry["flags"])
     intensity_downgraded = intensity_applied != payload.roast_intensity
     roast_entry = await cache.get_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION)
+    roast_cache_hit = roast_entry is not None
 
     if roast_entry is None:
         roast_entry = generate_roast(
@@ -99,15 +100,24 @@ async def post_audit(
                 )
             await _insert_review_queue(db, audit_row.id, roast_entry)
 
-    return _audit_response(
+    response = _audit_response(
         username=username,
-        cache_hit=score_cache_hit and "cached_at" in roast_entry,
+        cache_hit=score_cache_hit and roast_cache_hit,
         requested=payload.roast_intensity,
         applied=intensity_applied,
         downgraded=intensity_downgraded,
         scores_entry=scores_entry,
         roast_entry=roast_entry,
     )
+    _log_audit_completed(
+        username=username,
+        method="POST",
+        score_cache_hit=score_cache_hit,
+        roast_cache_hit=roast_cache_hit,
+        intensity_applied=intensity_applied,
+        github_rate_limit_remaining=getattr(github_client, "last_rate_limit_remaining", None),
+    )
+    return response
 
 
 @router.get("/audit/{username}")
@@ -128,7 +138,7 @@ async def get_audit(
     for intensity in ("medium", "mild", "brutal", "hell"):
         roast_entry = await cache.get_audit_roast(cache_client, username, intensity, SCHEMA_VERSION)
         if roast_entry is not None:
-            return _audit_response(
+            response = _audit_response(
                 username=username,
                 cache_hit=True,
                 requested=intensity,
@@ -137,6 +147,15 @@ async def get_audit(
                 scores_entry=scores_entry,
                 roast_entry=roast_entry,
             )
+            _log_audit_completed(
+                username=username,
+                method="GET",
+                score_cache_hit=True,
+                roast_cache_hit=True,
+                intensity_applied=intensity,
+                github_rate_limit_remaining=None,
+            )
+            return response
     raise APIError(404, "not_found", "Audit not found.")
 
 
@@ -220,6 +239,28 @@ def _audit_response(
         "improvement_areas": roast_entry["improvement_areas"],
         "roadmap": roast_entry["roadmap"],
     }
+
+
+def _log_audit_completed(
+    *,
+    username: str,
+    method: str,
+    score_cache_hit: bool,
+    roast_cache_hit: bool,
+    intensity_applied: str,
+    github_rate_limit_remaining: int | None,
+) -> None:
+    logger.info(
+        "audit completed",
+        extra={
+            "username": username,
+            "method": method,
+            "score_cache_hit": score_cache_hit,
+            "roast_cache_hit": roast_cache_hit,
+            "roast_intensity_applied": intensity_applied,
+            "github_rate_limit_remaining": github_rate_limit_remaining,
+        },
+    )
 
 
 def _schedule_stale_refresh_if_needed(

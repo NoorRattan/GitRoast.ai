@@ -15,6 +15,7 @@ from app.dependencies import (
     github_client_dependency,
     rate_limiters_dependency,
 )
+from app.services.github_client import select_evaluation_paths
 from app.services.project_evaluator import evaluate_project
 from app.services.rate_limit import InMemoryFixedWindowLimiter, RateLimiterRegistry
 
@@ -190,6 +191,40 @@ def test_evaluate_project_excludes_accessibility_for_non_ui_repo(repo_bundle):
     assert result.project_type == "cli_tool"
     assert result.excluded_categories == ["accessibility"]
     assert "documentation_accessibility" in result.categories
+
+
+def test_mock_markers_in_test_files_do_not_trigger_stub_cap(repo_bundle):
+    repo_bundle["tree_files"] = [
+        {"path": "src/service.py", "type": "blob", "size": 400},
+        {"path": "tests/test_service.py", "type": "blob", "size": 400},
+    ]
+    repo_bundle["files"] = [
+        {"path": "src/service.py", "size": 400, "truncated": False, "text": "def evaluate(): return 'evidence'"},
+        {"path": "tests/test_service.py", "size": 400, "truncated": False, "text": "from unittest.mock import Mock\ndef test_service(): assert Mock()"},
+    ]
+
+    result = evaluate_project("Evaluate repository evidence.", repo_bundle)
+
+    assert result.flags.possible_stub_implementation is False
+
+
+def test_evaluation_path_selection_samples_workspace_packages():
+    entries = [
+        {"path": "README.md", "size": 100},
+        {"path": "package.json", "size": 100},
+        {"path": "packages/api/src/index.ts", "size": 100},
+        {"path": "packages/web/src/index.ts", "size": 100},
+        {"path": "services/worker/main.py", "size": 100},
+        {"path": "tools/release.py", "size": 100},
+    ]
+
+    selected = select_evaluation_paths(entries, limit=6)
+
+    assert "README.md" in selected
+    assert "package.json" in selected
+    assert "packages/api/src/index.ts" in selected
+    assert "packages/web/src/index.ts" in selected
+    assert "services/worker/main.py" in selected
 
 
 def test_project_evaluation_route_returns_strict_cached_schema(project_route_harness):

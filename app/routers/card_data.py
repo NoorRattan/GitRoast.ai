@@ -10,6 +10,7 @@ from app.services.rate_limit import RateLimiterRegistry
 from app.services.scoring_constants import SCHEMA_VERSION
 
 router = APIRouter(prefix="/api/v1")
+PREVIOUS_SCHEMA_VERSION = SCHEMA_VERSION - 1
 
 
 @router.get("/card-data/{username}")
@@ -27,11 +28,13 @@ async def get_card_data(
     if result.scalar_one_or_none() is not None:
         raise APIError(404, "not_found", "Audit not found.")
     scores_entry = await get_audit_scores(cache_client, username, SCHEMA_VERSION)
+    if scores_entry is None and PREVIOUS_SCHEMA_VERSION > 0:
+        scores_entry = await get_audit_scores(cache_client, username, PREVIOUS_SCHEMA_VERSION)
     if scores_entry is None:
         raise APIError(404, "not_found", "Audit not found.")
     return {
         "username": username,
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": scores_entry.get("schema_version", SCHEMA_VERSION),
         "percentile_benchmark": scores_entry["scores"]["percentile_benchmark"],
         "percentile_sample_size": scores_entry.get("percentile_sample_size", 0),
         "percentile_cold_start": scores_entry.get("percentile_cold_start", True),

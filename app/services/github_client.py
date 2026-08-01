@@ -1,6 +1,8 @@
 import asyncio
 import base64
+import logging
 import re
+from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -12,6 +14,9 @@ GITHUB_GRAPHQL_URL = "https://api.github.com/graphql"
 GITHUB_REST_URL = "https://api.github.com"
 MAX_EVALUATION_FILES = 28
 MAX_EVALUATION_FILE_BYTES = 40_000
+MAX_TRANSIENT_RETRIES = 3
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubClientError(Exception):
@@ -118,6 +123,14 @@ query GitRoastReadme($login: String!, $repo: String!, $expression: String!) {
 }
 """
 
+EXTERNAL_PULL_REQUESTS_QUERY = """
+query GitRoastExternalPullRequests($query: String!) {
+  search(type: ISSUE, query: $query, first: 1) {
+    issueCount
+  }
+}
+"""
+
 
 class GitHubGraphQLClient:
     def __init__(
@@ -133,8 +146,14 @@ class GitHubGraphQLClient:
         self._max_repos = max_repos
         self._sleep = sleep
         self._semaphore = asyncio.Semaphore(1)
+        self._rate_limit_remaining: ContextVar[int | None] = ContextVar("github_rate_limit_remaining", default=None)
+
+    @property
+    def last_rate_limit_remaining(self) -> int | None:
+        return self._rate_limit_remaining.get()
 
     async def query_user_profile(self, username: str, *, max_repos: int | None = None) -> dict[str, Any]:
+        self._rate_limit_remaining.set(None)
         request = GitHubProfileRequest(username=username, max_repos=max_repos or self._max_repos)
         merged_user: dict[str, Any] | None = None
         after: str | None = None
@@ -166,9 +185,27 @@ class GitHubGraphQLClient:
                 break
 
         profile = parse_profile_response({"data": {"user": merged_user}}, max_repos=request.max_repos)
+        try:
+            profile["external_pr_count"] = await self._query_external_pull_request_count(profile["username"])
+        except GitHubClientError:
+            # Missing evidence must not unlock harsher roast intensities.
+            profile["external_pr_count"] = 0
+            logger.warning(
+                "external pull request lookup unavailable; applying beginner safeguard",
+                exc_info=True,
+                extra={"username": profile["username"]},
+            )
         await self._hydrate_first_commit_dates(profile, request)
         await self._hydrate_readmes(profile, request)
         return profile
+
+    async def _query_external_pull_request_count(self, username: str) -> int:
+        payload = await self.execute(
+            EXTERNAL_PULL_REQUESTS_QUERY,
+            {"query": f"is:pr author:{username} -user:{username}"},
+        )
+        search = payload.get("data", {}).get("search") or {}
+        return max(0, int(search.get("issueCount") or 0))
 
     async def query_repository_evidence(self, repo_url: str) -> dict[str, Any]:
         revision = await self.query_repository_revision(repo_url)
@@ -325,6 +362,7 @@ class GitHubGraphQLClient:
                     "X-GitHub-Api-Version": "2022-11-28",
                 },
             )
+        self._record_rate_limit_remaining(response)
         if response.status_code in {403, 429}:
             raise GitHubRateLimitError(
                 "GitHub rate limit blocked repository evidence collection",
@@ -359,6 +397,7 @@ class GitHubGraphQLClient:
                     "Accept": "application/vnd.github+json",
                 },
             )
+            self._record_rate_limit_remaining(response)
 
             if response.status_code in {403, 429}:
                 retry_after = response.headers.get("Retry-After")
@@ -367,7 +406,7 @@ class GitHubGraphQLClient:
                     continue
 
                 undocumented_failures += 1
-                if undocumented_failures >= 3:
+                if undocumented_failures > MAX_TRANSIENT_RETRIES:
                     raise GitHubRateLimitError(
                         "GitHub secondary rate limit did not include Retry-After",
                         status_code=response.status_code,
@@ -378,7 +417,7 @@ class GitHubGraphQLClient:
 
             if response.status_code >= 500:
                 server_failures += 1
-                if server_failures >= 3:
+                if server_failures > MAX_TRANSIENT_RETRIES:
                     raise GitHubClientError(
                         f"GitHub GraphQL request failed with status {response.status_code}",
                         status_code=response.status_code,
@@ -398,6 +437,17 @@ class GitHubGraphQLClient:
             if payload.get("errors"):
                 raise GitHubClientError(str(payload["errors"]), status_code=response.status_code)
             return payload
+
+    def _record_rate_limit_remaining(self, response: Any) -> None:
+        value = response.headers.get("X-RateLimit-Remaining")
+        if value is None:
+            return
+        try:
+            remaining = int(value)
+        except (TypeError, ValueError):
+            return
+        if remaining >= 0:
+            self._rate_limit_remaining.set(remaining)
 
 
 def parse_profile_response(payload: dict[str, Any], *, max_repos: int | None = None) -> dict[str, Any]:
@@ -544,7 +594,52 @@ def select_evaluation_paths(entries: list[dict[str, Any]], *, limit: int = MAX_E
         if int(entry.get("size") or 0) <= MAX_EVALUATION_FILE_BYTES and _is_text_evaluation_file(str(entry.get("path") or ""))
     ]
     candidates.sort(key=lambda entry: (_path_priority(str(entry["path"])), -int(entry.get("size") or 0), str(entry["path"])))
-    return [str(entry["path"]) for entry in candidates[:limit]]
+    if limit <= 0:
+        return []
+
+    selected: list[dict[str, Any]] = []
+    selected_paths: set[str] = set()
+    priority_budgets = {0: 1, 1: 3, 2: 1}
+    priority_counts = {priority: 0 for priority in priority_budgets}
+
+    # Preserve a compact project overview before sampling implementation files.
+    for entry in candidates:
+        priority = _path_priority(str(entry["path"]))
+        if priority not in priority_budgets or priority_counts[priority] >= priority_budgets[priority]:
+            continue
+        selected.append(entry)
+        selected_paths.add(str(entry["path"]))
+        priority_counts[priority] += 1
+        if len(selected) == limit:
+            return [str(item["path"]) for item in selected]
+
+    # Monorepos should not lose entire top-level packages to global path priority.
+    remaining = [entry for entry in candidates if str(entry["path"]) not in selected_paths]
+    for directory in sorted({_sample_directory(str(entry["path"])) for entry in remaining}):
+        entry = next(item for item in remaining if _sample_directory(str(item["path"])) == directory)
+        selected.append(entry)
+        selected_paths.add(str(entry["path"]))
+        if len(selected) == limit:
+            return [str(item["path"]) for item in selected]
+
+    for entry in candidates:
+        path = str(entry["path"])
+        if path in selected_paths:
+            continue
+        selected.append(entry)
+        selected_paths.add(path)
+        if len(selected) == limit:
+            break
+    return [str(item["path"]) for item in selected]
+
+
+def _sample_directory(path: str) -> str:
+    parts = path.split("/")
+    if len(parts) < 2:
+        return "."
+    if parts[0] in {"apps", "crates", "modules", "packages", "services"} and len(parts) >= 3:
+        return "/".join(parts[:2])
+    return parts[0]
 
 
 def _is_text_evaluation_file(path: str) -> bool:

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
 from app.services.github_client import parse_profile_response
-from app.services.scoring import score_profile
+from app.services.scoring import _compute_metrics, _is_generic_commit_message, _readme_score, score_profile
 from app.services.scoring_constants import COMPOSITE_SCORE_KEYS, FindingMetric
 
 
@@ -91,3 +91,48 @@ def test_active_weeks_ratio_uses_oldest_default_branch_commit_bound():
     assert bounded["scores"]["commit_consistency"] < truncated["scores"]["commit_consistency"]
     finding = next(item for item in bounded["findings"] if item["metric"] == "active_weeks_ratio")
     assert "oldest default-branch commit" in finding["detail"]
+
+
+def test_readme_score_uses_markdown_headings_and_ignores_incidental_keywords():
+    headed = [{"readme_fetched": True, "readme_text": "## Quick Start\n## Examples\n## Demo\n"}]
+    incidental = [{"readme_fetched": True, "readme_text": "This sentence mentions installation, usage, and demo without sections."}]
+
+    assert _readme_score(headed) > _readme_score(incidental)
+
+
+def test_conventional_commit_messages_are_not_generic_even_when_short():
+    assert _is_generic_commit_message("fix: null check") is False
+    assert _is_generic_commit_message("feat(api)!: protect audit route") is False
+    assert _is_generic_commit_message("fix") is True
+    assert _is_generic_commit_message("wip") is True
+
+
+def test_substantial_one_commit_repository_is_not_counted_as_graveyard():
+    profile = {
+        "created_at": "2020-01-01T00:00:00Z",
+        "external_pr_count": 1,
+        "repos": [
+            {
+                "name": "shipped-tool",
+                "is_fork": False,
+                "commit_count": 1,
+                "disk_usage": 50_000,
+                "commit_messages": ["feat: ship complete tool"],
+                "commit_dates": ["2026-07-01T00:00:00Z"],
+                "languages": {"Python": 50_000},
+            },
+            {
+                "name": "abandoned-stub",
+                "is_fork": False,
+                "commit_count": 1,
+                "disk_usage": 10,
+                "commit_messages": ["wip"],
+                "commit_dates": ["2026-07-01T00:00:00Z"],
+                "languages": {"Python": 10},
+            },
+        ],
+    }
+
+    metrics = _compute_metrics(profile, profile["repos"], NOW)
+
+    assert metrics["graveyard_ratio"] == 0.5

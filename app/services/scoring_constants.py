@@ -1,7 +1,7 @@
 from enum import StrEnum
 
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 PERCENTILE_COLD_START_SAMPLE_SIZE = 20
 
