@@ -8,6 +8,7 @@ from app.dependencies import cache_client_dependency, db_session_dependency, rat
 from app.services.cache import get_audit_scores
 from app.services.rate_limit import RateLimiterRegistry
 from app.services.scoring_constants import SCHEMA_VERSION
+from app.services.signal_baselines import latest_signal_baseline
 
 router = APIRouter(prefix="/api/v1")
 PREVIOUS_SCHEMA_VERSION = SCHEMA_VERSION - 1
@@ -27,7 +28,9 @@ async def get_card_data(
     )
     if result.scalar_one_or_none() is not None:
         raise APIError(404, "not_found", "Audit not found.")
-    scores_entry = await get_audit_scores(cache_client, username, SCHEMA_VERSION)
+    baseline = await latest_signal_baseline(db)
+    baseline_version = baseline.version if baseline else "hand-tuned-v1"
+    scores_entry = await get_audit_scores(cache_client, username, SCHEMA_VERSION, baseline_version)
     if scores_entry is None and PREVIOUS_SCHEMA_VERSION > 0:
         scores_entry = await get_audit_scores(cache_client, username, PREVIOUS_SCHEMA_VERSION)
     if scores_entry is None:

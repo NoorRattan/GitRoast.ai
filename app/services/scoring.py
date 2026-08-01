@@ -30,7 +30,12 @@ CONVENTIONAL_COMMIT_REGEX = re.compile(
 )
 
 
-def score_profile(profile: dict[str, Any], *, now: datetime | None = None) -> dict[str, Any]:
+def score_profile(
+    profile: dict[str, Any],
+    *,
+    now: datetime | None = None,
+    healthy_baselines: dict[FindingMetric, float] | None = None,
+) -> dict[str, Any]:
     now = now or datetime.now(UTC)
     repos = profile.get("repos", [])
     original_repos = [repo for repo in repos if not repo.get("is_fork")]
@@ -55,11 +60,12 @@ def score_profile(profile: dict[str, Any], *, now: datetime | None = None) -> di
         "schema_version": SCHEMA_VERSION,
         "scores": scores,
         "flags": flags,
-        "findings": _findings(metrics),
+        "findings": _findings(metrics, healthy_baselines=healthy_baselines),
         "avatar_url": profile.get("avatar_url"),
         "account_age_months": metrics["account_age_months"],
         "percentile_sample_size": 0,
         "percentile_cold_start": True,
+        "metric_snapshot": _metric_snapshot(metrics),
     }
 
 
@@ -157,18 +163,22 @@ def _tech_diversity(metrics: dict[str, Any]) -> int:
     return _as_score(score)
 
 
-def _findings(metrics: dict[str, Any]) -> list[dict[str, Any]]:
+def _findings(
+    metrics: dict[str, Any],
+    *,
+    healthy_baselines: dict[FindingMetric, float] | None = None,
+) -> list[dict[str, Any]]:
     candidates = [
-        _finding(FindingMetric.graveyard_ratio, metrics["graveyard_ratio"], "project_depth", f"{metrics['graveyard_ratio']:.0%} of original repos have one commit or less"),
-        _finding(FindingMetric.generic_commit_ratio, metrics["generic_commit_ratio"], "commit_consistency", f"{metrics['generic_commit_ratio']:.0%} of sampled commit messages are generic"),
-        _finding(FindingMetric.active_weeks_ratio, metrics["active_weeks_ratio"], "commit_consistency", _active_weeks_detail(metrics)),
-        _finding(FindingMetric.fork_ratio, metrics["fork_ratio"], "profile_strength", f"{metrics['fork_ratio']:.0%} of visible repos are forks"),
-        _finding(FindingMetric.license_coverage, metrics["license_coverage"], "profile_strength", f"{metrics['license_coverage']:.0%} of original repos include license metadata"),
-        _finding(FindingMetric.pinned_curation_mismatch, metrics["pinned_curation_mismatch"], "profile_strength", f"Pinned repos match {1 - metrics['pinned_curation_mismatch']:.0%} of the strongest visible repos"),
-        _finding(FindingMetric.readme_heuristic_gaps, 1 - metrics["readme_score"], "profile_strength", f"README heuristics cover {metrics['readme_score']:.0%} of expected presentation signals"),
-        _finding(FindingMetric.tech_diversity_concentration, metrics["largest_language_ratio"], "tech_diversity", f"The largest language accounts for {metrics['largest_language_ratio']:.0%} of measured code bytes"),
-        _finding(FindingMetric.repo_substance_score, metrics["repo_substance_score"], "project_depth", f"Repo substance proxy scores {metrics['repo_substance_score']:.0%} across original repos"),
-        _finding(FindingMetric.ci_hygiene_gap, metrics["ci_hygiene_gap"], "project_depth", f"CI and test hygiene is missing in {metrics['ci_hygiene_gap']:.0%} of expected signals"),
+        _finding(FindingMetric.graveyard_ratio, metrics["graveyard_ratio"], "project_depth", f"{metrics['graveyard_ratio']:.0%} of original repos have one commit or less", healthy_baselines),
+        _finding(FindingMetric.generic_commit_ratio, metrics["generic_commit_ratio"], "commit_consistency", f"{metrics['generic_commit_ratio']:.0%} of sampled commit messages are generic", healthy_baselines),
+        _finding(FindingMetric.active_weeks_ratio, metrics["active_weeks_ratio"], "commit_consistency", _active_weeks_detail(metrics), healthy_baselines),
+        _finding(FindingMetric.fork_ratio, metrics["fork_ratio"], "profile_strength", f"{metrics['fork_ratio']:.0%} of visible repos are forks", healthy_baselines),
+        _finding(FindingMetric.license_coverage, metrics["license_coverage"], "profile_strength", f"{metrics['license_coverage']:.0%} of original repos include license metadata", healthy_baselines),
+        _finding(FindingMetric.pinned_curation_mismatch, metrics["pinned_curation_mismatch"], "profile_strength", f"Pinned repos match {1 - metrics['pinned_curation_mismatch']:.0%} of the strongest visible repos", healthy_baselines),
+        _finding(FindingMetric.readme_heuristic_gaps, 1 - metrics["readme_score"], "profile_strength", f"README heuristics cover {metrics['readme_score']:.0%} of expected presentation signals", healthy_baselines),
+        _finding(FindingMetric.tech_diversity_concentration, metrics["largest_language_ratio"], "tech_diversity", f"The largest language accounts for {metrics['largest_language_ratio']:.0%} of measured code bytes", healthy_baselines),
+        _finding(FindingMetric.repo_substance_score, metrics["repo_substance_score"], "project_depth", f"Repo substance proxy scores {metrics['repo_substance_score']:.0%} across original repos", healthy_baselines),
+        _finding(FindingMetric.ci_hygiene_gap, metrics["ci_hygiene_gap"], "project_depth", f"CI and test hygiene is missing in {metrics['ci_hygiene_gap']:.0%} of expected signals", healthy_baselines),
     ]
     candidates.sort(key=lambda item: item["_deviation"], reverse=True)
     return [{key: value for key, value in item.items() if key != "_deviation"} for item in candidates[:6]]
@@ -180,10 +190,10 @@ def _active_weeks_detail(metrics: dict[str, Any]) -> str:
     return f"Activity appears in {metrics['active_weeks_ratio']:.0%} of weeks since the first sampled commit"
 
 
-def _finding(metric: FindingMetric, value: float, contributes_to: str, detail: str) -> dict[str, Any]:
+def _finding(metric: FindingMetric, value: float, contributes_to: str, detail: str, healthy_baselines: dict[FindingMetric, float] | None = None) -> dict[str, Any]:
     if contributes_to not in COMPOSITE_SCORE_KEYS:
         raise ValueError(f"invalid composite key: {contributes_to}")
-    baseline = HEALTHY_BASELINES[metric]
+    baseline = (healthy_baselines or HEALTHY_BASELINES)[metric]
     return {
         "metric": metric.value,
         "detail": detail,
@@ -191,6 +201,15 @@ def _finding(metric: FindingMetric, value: float, contributes_to: str, detail: s
         "contributes_to": contributes_to,
         "_deviation": abs(value - baseline),
     }
+
+
+def _metric_snapshot(metrics: dict[str, Any]) -> dict[str, float]:
+    keys = (
+        "graveyard_ratio", "generic_commit_ratio", "active_weeks_ratio", "fork_ratio",
+        "license_coverage", "pinned_curation_mismatch", "readme_score",
+        "largest_language_ratio", "repo_substance_score", "ci_hygiene_gap",
+    )
+    return {key: round(float(metrics[key]), 6) for key in keys}
 
 
 def _readme_score(repos: list[dict[str, Any]]) -> float:

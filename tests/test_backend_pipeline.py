@@ -143,6 +143,12 @@ def test_audit_scores_cache_hit_skips_github(route_harness, load_github_fixture)
     assert response.status_code == 200
     assert h["github"].calls == 0
     assert response.json()["roast_text"]
+    assert response.json()["distributional_calibration"] == {
+        "status": "collecting",
+        "version": "hand-tuned-v1",
+        "sample_size": 0,
+        "minimum_sample_size": 100,
+    }
 
 
 def test_roast_cache_hit_skips_regeneration_and_github(route_harness, load_github_fixture, monkeypatch):

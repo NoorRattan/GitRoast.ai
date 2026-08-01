@@ -10,12 +10,12 @@ from app.services.scoring_constants import CACHE_TTL_SECONDS, STALE_REFRESH_WIND
 logger = logging.getLogger(__name__)
 
 
-def audit_scores_key(username: str, schema_version: int) -> str:
-    return f"audit_scores:{username.lower()}:{schema_version}"
+def audit_scores_key(username: str, schema_version: int, baseline_version: str = "hand-tuned-v1") -> str:
+    return f"audit_scores:{username.lower()}:{schema_version}:{baseline_version}"
 
 
-def audit_roast_key(username: str, intensity_applied: str, schema_version: int) -> str:
-    return f"audit_roast:{username.lower()}:{intensity_applied.lower()}:{schema_version}"
+def audit_roast_key(username: str, intensity_applied: str, schema_version: int, baseline_version: str = "hand-tuned-v1") -> str:
+    return f"audit_roast:{username.lower()}:{intensity_applied.lower()}:{schema_version}:{baseline_version}"
 
 
 def project_evaluation_key(repo_url: str, commit_sha: str, problem_statement: str, schema_version: int) -> str:
@@ -28,12 +28,17 @@ def should_refresh_stale_entry(age_seconds: int, ttl_seconds: int = CACHE_TTL_SE
     return ttl_seconds - age_seconds <= STALE_REFRESH_WINDOW_SECONDS and age_seconds < ttl_seconds
 
 
-async def get_audit_scores(client: Any, username: str, schema_version: int) -> dict[str, Any] | None:
-    return await _get_json(client, audit_scores_key(username, schema_version))
+async def get_audit_scores(client: Any, username: str, schema_version: int, baseline_version: str = "hand-tuned-v1") -> dict[str, Any] | None:
+    entry = await _get_json(client, audit_scores_key(username, schema_version, baseline_version))
+    # Schema v5 entries predate baseline versioning. Keep the documented
+    # one-version card transition working without mixing current v6 scores.
+    if entry is None and schema_version < 6 and baseline_version == "hand-tuned-v1":
+        return await _get_json(client, f"audit_scores:{username.lower()}:{schema_version}")
+    return entry
 
 
-async def set_audit_scores(client: Any, username: str, schema_version: int, value: dict[str, Any]) -> bool:
-    return await _set_json(client, audit_scores_key(username, schema_version), value)
+async def set_audit_scores(client: Any, username: str, schema_version: int, value: dict[str, Any], baseline_version: str = "hand-tuned-v1") -> bool:
+    return await _set_json(client, audit_scores_key(username, schema_version, baseline_version), value)
 
 
 async def get_audit_roast(
@@ -41,8 +46,9 @@ async def get_audit_roast(
     username: str,
     intensity_applied: str,
     schema_version: int,
+    baseline_version: str = "hand-tuned-v1",
 ) -> dict[str, Any] | None:
-    return await _get_json(client, audit_roast_key(username, intensity_applied, schema_version))
+    return await _get_json(client, audit_roast_key(username, intensity_applied, schema_version, baseline_version))
 
 
 async def set_audit_roast(
@@ -51,8 +57,9 @@ async def set_audit_roast(
     intensity_applied: str,
     schema_version: int,
     value: dict[str, Any],
+    baseline_version: str = "hand-tuned-v1",
 ) -> bool:
-    return await _set_json(client, audit_roast_key(username, intensity_applied, schema_version), value)
+    return await _set_json(client, audit_roast_key(username, intensity_applied, schema_version, baseline_version), value)
 
 
 async def get_project_evaluation(
@@ -76,10 +83,11 @@ async def set_project_evaluation(
     return await _set_json(client, project_evaluation_key(repo_url, commit_sha, problem_statement, schema_version), value)
 
 
-async def purge_audit_cache(client: Any, username: str, schema_version: int) -> bool:
-    keys = [audit_scores_key(username, schema_version)]
+async def purge_audit_cache(client: Any, username: str, schema_version: int, baseline_versions: tuple[str, ...] = ("hand-tuned-v1",)) -> bool:
+    keys = [audit_scores_key(username, schema_version, baseline) for baseline in baseline_versions]
     keys.extend(
-        audit_roast_key(username, intensity, schema_version)
+        audit_roast_key(username, intensity, schema_version, baseline)
+        for baseline in baseline_versions
         for intensity in ("mild", "medium", "brutal", "hell")
     )
     ok = True

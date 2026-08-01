@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.services.scoring_constants import SCHEMA_VERSION
@@ -33,6 +33,7 @@ class Audit(Base):
     percentile_benchmark: Mapped[int] = mapped_column(Integer, nullable=False)
     account_age_months: Mapped[int | None] = mapped_column(Integer, nullable=True)
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=SCHEMA_VERSION)
+    metric_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     review_items: Mapped[list["ReviewQueueItem"]] = relationship(back_populates="audit")
@@ -60,3 +61,18 @@ class ReviewQueueItem(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
 
     audit: Mapped[Audit] = relationship(back_populates="review_items")
+
+
+class SignalBaselineConfiguration(Base):
+    __tablename__ = "signal_baseline_configurations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    version: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    source_schema_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    sample_size: Mapped[int] = mapped_column(Integer, nullable=False)
+    baselines: Mapped[dict] = mapped_column(JSON, nullable=False)
+    distribution_summary: Mapped[dict] = mapped_column(JSON, nullable=False)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    activated_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, nullable=False)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

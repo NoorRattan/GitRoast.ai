@@ -37,7 +37,7 @@ async def test_db_schema_creates_expected_tables_and_columns():
 
     await engine.dispose()
 
-    assert {"audits", "opted_out_usernames", "review_queue"} <= set(tables)
+    assert {"audits", "opted_out_usernames", "review_queue", "signal_baseline_configurations"} <= set(tables)
     assert {
         "username",
         "profile_strength",
@@ -48,6 +48,7 @@ async def test_db_schema_creates_expected_tables_and_columns():
         "account_age_months",
         "schema_version",
         "created_at",
+        "metric_snapshot",
     } <= tables["audits"]
     assert {"username", "created_at"} <= tables["opted_out_usernames"]
     assert {"id", "audit_id", "generated_content", "review_status", "reason", "created_at"} <= tables["review_queue"]

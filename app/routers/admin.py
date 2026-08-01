@@ -7,11 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import APIError
 from app.core.security import require_admin
-from app.db.models import ReviewQueueItem, ReviewStatus
+from app.db.models import ReviewQueueItem, ReviewStatus, SignalBaselineConfiguration
 from app.dependencies import db_session_dependency
-from app.models.api import RejectReviewRequest, ReviewStatusValue
+from app.models.api import ActivateSignalBaselineRequest, RejectReviewRequest, ReviewStatusValue
 from app.dependencies import rate_limiters_dependency
 from app.services.rate_limit import RateLimiterRegistry
+from app.services.signal_baselines import baseline_status, build_signal_baseline
 
 
 async def limit_admin_auth(
@@ -75,3 +76,42 @@ def _review_payload(item: ReviewQueueItem) -> dict[str, Any]:
         "reason": item.reason,
         "created_at": item.created_at.isoformat(),
     }
+
+
+@router.get("/signal-baselines")
+async def get_signal_baselines(db: AsyncSession = Depends(db_session_dependency)) -> dict[str, Any]:
+    configs = (await db.execute(select(SignalBaselineConfiguration).order_by(SignalBaselineConfiguration.created_at.desc()))).scalars().all()
+    return {"status": await baseline_status(db), "configurations": [_baseline_payload(config) for config in configs]}
+
+
+@router.post("/signal-baselines/recompute")
+async def recompute_signal_baselines(
+    db: AsyncSession = Depends(db_session_dependency),
+) -> dict[str, Any]:
+    try:
+        config = await build_signal_baseline(db, "bootstrap-admin")
+    except ValueError as exc:
+        raise APIError(409, "insufficient_distribution_data", str(exc)) from exc
+    return _baseline_payload(config)
+
+
+@router.post("/signal-baselines/{configuration_id}/activate")
+async def activate_signal_baseline(
+    configuration_id: int,
+    payload: ActivateSignalBaselineRequest,
+    db: AsyncSession = Depends(db_session_dependency),
+) -> dict[str, Any]:
+    config = await db.get(SignalBaselineConfiguration, configuration_id)
+    if config is None:
+        raise APIError(404, "not_found", "Signal baseline configuration not found.")
+    await db.execute(SignalBaselineConfiguration.__table__.update().where(SignalBaselineConfiguration.is_active.is_(True)).values(is_active=False))
+    config.is_active = True
+    config.activated_by = "bootstrap-admin"
+    from datetime import UTC, datetime
+    config.activated_at = datetime.now(UTC)
+    await db.commit()
+    return {**_baseline_payload(config), "activation_reason": payload.reason}
+
+
+def _baseline_payload(config: SignalBaselineConfiguration) -> dict[str, Any]:
+    return {"id": config.id, "version": config.version, "sample_size": config.sample_size, "is_active": config.is_active, "baselines": config.baselines, "distribution_summary": config.distribution_summary, "created_at": config.created_at.isoformat()}

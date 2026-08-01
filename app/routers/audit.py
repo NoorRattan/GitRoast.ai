@@ -23,6 +23,7 @@ from app.services.rate_limit import RateLimiterRegistry
 from app.services.roast_engine import generate_roast, should_queue_for_review
 from app.services.scoring import score_profile
 from app.services.scoring_constants import SCHEMA_VERSION
+from app.services.signal_baselines import baseline_status, config_baselines, latest_signal_baseline
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,9 @@ async def post_audit(
     if await _is_opted_out(db, username):
         raise APIError(409, "opted_out", "This username has opted out of GitRoast.ai audits.")
 
-    scores_entry = await cache.get_audit_scores(cache_client, username, SCHEMA_VERSION)
+    baseline_config = await latest_signal_baseline(db)
+    baseline_version = baseline_config.version if baseline_config else "hand-tuned-v1"
+    scores_entry = await cache.get_audit_scores(cache_client, username, SCHEMA_VERSION, baseline_version)
     profile: dict[str, Any] | None = None
     score_cache_hit = scores_entry is not None
     audit_row: Audit | None = None
@@ -69,7 +72,8 @@ async def post_audit(
             if exc.status_code == 404:
                 raise APIError(404, "not_found", "GitHub user not found.") from exc
             raise APIError(503, "github_unavailable", "GitHub is temporarily unavailable.") from exc
-        scores_entry = score_profile(profile)
+        scores_entry = score_profile(profile, healthy_baselines=config_baselines(baseline_config))
+        scores_entry["baseline_version"] = baseline_version
         benchmark = await calculate_percentile_benchmark(
             db,
             username=username,
@@ -77,19 +81,20 @@ async def post_audit(
             account_age_months=scores_entry["account_age_months"],
         )
         apply_percentile_benchmark(scores_entry, benchmark)
-        await cache.set_audit_scores(cache_client, username, SCHEMA_VERSION, scores_entry)
+        await cache.set_audit_scores(cache_client, username, SCHEMA_VERSION, scores_entry, baseline_version)
         audit_row = await _insert_audit(
             db,
             username,
             scores_entry["scores"],
             account_age_months=scores_entry["account_age_months"],
+            metric_snapshot=scores_entry.get("metric_snapshot"),
         )
     else:
         _schedule_stale_refresh_if_needed(request, background_tasks, username, scores_entry)
 
     intensity_applied = _apply_beginner_downgrade(payload.roast_intensity, scores_entry["flags"])
     intensity_downgraded = intensity_applied != payload.roast_intensity
-    roast_entry = await cache.get_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION)
+    roast_entry = await cache.get_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION, baseline_version)
     roast_cache_hit = roast_entry is not None
 
     if roast_entry is None:
@@ -98,7 +103,7 @@ async def post_audit(
             scores=scores_entry["scores"],
             intensity_applied=intensity_applied,
         )
-        await cache.set_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION, roast_entry)
+        await cache.set_audit_roast(cache_client, username, intensity_applied, SCHEMA_VERSION, roast_entry, baseline_version)
         # Review queue now flags thin deterministic assemblies for line-bank editing, not every generation.
         if should_queue_for_review(scores_entry["findings"]):
             if audit_row is None:
@@ -120,6 +125,7 @@ async def post_audit(
         downgraded=intensity_downgraded,
         scores_entry=scores_entry,
         roast_entry=roast_entry,
+        distributional_status=await baseline_status(db),
     )
     _log_audit_completed(
         username=username,
@@ -143,12 +149,14 @@ async def get_audit(
     await rate_limiters.check("get_audit", request)
     if await _is_opted_out(db, username):
         raise APIError(404, "not_found", "Audit not found.")
-    scores_entry = await cache.get_audit_scores(cache_client, username, SCHEMA_VERSION)
+    baseline_config = await latest_signal_baseline(db)
+    baseline_version = baseline_config.version if baseline_config else "hand-tuned-v1"
+    scores_entry = await cache.get_audit_scores(cache_client, username, SCHEMA_VERSION, baseline_version)
     if scores_entry is None:
         raise APIError(404, "not_found", "Audit not found.")
 
     for intensity in ("medium", "mild", "brutal", "hell"):
-        roast_entry = await cache.get_audit_roast(cache_client, username, intensity, SCHEMA_VERSION)
+        roast_entry = await cache.get_audit_roast(cache_client, username, intensity, SCHEMA_VERSION, baseline_version)
         if roast_entry is not None:
             response = _audit_response(
                 username=username,
@@ -158,6 +166,7 @@ async def get_audit(
                 downgraded=False,
                 scores_entry=scores_entry,
                 roast_entry=roast_entry,
+                distributional_status=await baseline_status(db),
             )
             _log_audit_completed(
                 username=username,
@@ -184,6 +193,7 @@ async def _insert_audit(
     scores: dict[str, int],
     *,
     account_age_months: int | None,
+    metric_snapshot: dict[str, Any] | None = None,
 ) -> Audit:
     audit = Audit(
         username=username.lower(),
@@ -194,6 +204,7 @@ async def _insert_audit(
         percentile_benchmark=scores["percentile_benchmark"],
         account_age_months=account_age_months,
         schema_version=SCHEMA_VERSION,
+        metric_snapshot=metric_snapshot,
     )
     db.add(audit)
     await db.commit()
@@ -232,6 +243,7 @@ def _audit_response(
     downgraded: bool,
     scores_entry: dict[str, Any],
     roast_entry: dict[str, Any],
+    distributional_status: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "username": username,
@@ -246,6 +258,7 @@ def _audit_response(
         "findings": scores_entry["findings"],
         "percentile_sample_size": scores_entry.get("percentile_sample_size", 0),
         "percentile_cold_start": scores_entry.get("percentile_cold_start", True),
+        "distributional_calibration": distributional_status,
         "report_context": {
             "scope": AUDIT_SCOPE,
             "limitations": AUDIT_LIMITATIONS,
@@ -320,6 +333,7 @@ async def _refresh_scores_task(app, username: str, key: str) -> None:
                 username,
                 scores_entry["scores"],
                 account_age_months=scores_entry["account_age_months"],
+                metric_snapshot=scores_entry.get("metric_snapshot"),
             )
     except Exception:
         logger.exception("stale audit refresh failed", extra={"username": username})

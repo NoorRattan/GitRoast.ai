@@ -16,6 +16,7 @@ GitRoast fetches real README, pinned-repository, language, commit, license, and 
 | Backend health | https://gitroast-ai.onrender.com/health | Live on Render |
 | Example card image | https://gitroast-card-preview.jnoorrattan.workers.dev/card/torvalds.png?v=1 | Live on the card preview worker |
 | Production verification | docs/production-verification.md | Checked-in deployment notes |
+| Population baselines | docs/signal-baselines.md | Evidence-based finding-baseline policy |
 | Card cache verification | workers/card/CACHE_KEY_VERIFICATION.md | Checked-in cache-key verification notes |
 
 ## Deployment Notes

@@ -8,6 +8,7 @@ from app.models.api import OptOutRequest
 from app.services.cache import purge_audit_cache
 from app.services.rate_limit import RateLimiterRegistry
 from app.services.scoring_constants import SCHEMA_VERSION
+from app.services.signal_baselines import latest_signal_baseline
 
 router = APIRouter(prefix="/api/v1")
 
@@ -27,7 +28,9 @@ async def post_opt_out(
     await db.execute(delete(ReviewQueueItem).where(ReviewQueueItem.audit_id.in_(audit_ids)))
     await db.execute(delete(Audit).where(Audit.username == username))
     await db.commit()
-    await purge_audit_cache(cache_client, username, SCHEMA_VERSION)
+    baseline = await latest_signal_baseline(db)
+    versions = ("hand-tuned-v1", baseline.version) if baseline else ("hand-tuned-v1",)
+    await purge_audit_cache(cache_client, username, SCHEMA_VERSION, versions)
     return {"status": "opted_out"}
 
 
