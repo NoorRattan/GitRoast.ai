@@ -48,8 +48,6 @@ export function LiveSignalMap(): JSX.Element {
   const pointerY = useMotionValue(0);
   const springX = useSpring(pointerX, { stiffness: 90, damping: 19, mass: 0.55 });
   const springY = useSpring(pointerY, { stiffness: 90, damping: 19, mass: 0.55 });
-  const planetX = useTransform(springX, [-1, 1], [-7, 7]);
-  const planetY = useTransform(springY, [-1, 1], [6, -6]);
   const skyX = useTransform(springX, [-1, 1], [-10, 10]);
   const skyY = useTransform(springY, [-1, 1], [7, -7]);
   const starsX = useTransform(springX, [-1, 1], [-4, 4]);
@@ -117,18 +115,6 @@ export function LiveSignalMap(): JSX.Element {
         <div className="signal-orbit orbit-mid" />
         <div className="signal-orbit orbit-tight" />
         <div className="signal-orbit orbit-vertical" />
-
-        <motion.div
-          className="signal-planet-wrap"
-          style={isAnimated ? { rotateY: planetX, rotateX: planetY } : undefined}
-        >
-          <div className="signal-planet-halo" />
-          <div className="signal-planet-shadow" />
-          <div className="signal-planet">
-            <span className="signal-planet-highlight" />
-            <span className="signal-planet-scan" />
-          </div>
-        </motion.div>
 
         {nodes.map((node, index) => (
           <motion.button
