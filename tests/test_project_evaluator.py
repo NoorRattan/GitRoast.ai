@@ -156,7 +156,7 @@ def project_route_harness(required_env, repo_bundle):
     asyncio.run(engine.dispose())
 
 
-def test_evaluate_project_excludes_accessibility_for_non_ui_repo(repo_bundle):
+def test_evaluate_project_excludes_combined_docs_accessibility_category_for_non_ui_repo(repo_bundle):
     repo_bundle["tree_files"] = [
         {"path": "README.md", "type": "blob", "size": 300},
         {"path": "pyproject.toml", "type": "blob", "size": 300},
@@ -189,8 +189,32 @@ def test_evaluate_project_excludes_accessibility_for_non_ui_repo(repo_bundle):
     )
 
     assert result.project_type == "cli_tool"
-    assert result.excluded_categories == ["accessibility"]
-    assert "documentation_accessibility" in result.categories
+    assert result.excluded_categories == ["documentation_accessibility"]
+    assert "documentation_accessibility" not in result.categories
+
+
+def test_known_vulnerable_dependency_reduces_security_score(repo_bundle):
+    clean = evaluate_project(
+        "Evaluate repositories against a problem statement with evidence-grounded scoring.",
+        repo_bundle,
+    )
+    repo_bundle["tree_files"].append({"path": "package.json", "type": "blob", "size": 80})
+    repo_bundle["files"].append(
+        {
+            "path": "package.json",
+            "size": 80,
+            "truncated": False,
+            "text": '{"dependencies":{"axios":"^0.21.0"}}',
+        }
+    )
+
+    vulnerable = evaluate_project(
+        "Evaluate repositories against a problem statement with evidence-grounded scoring.",
+        repo_bundle,
+    )
+
+    assert vulnerable.categories["security"].score < clean.categories["security"].score
+    assert "known-vulnerable dependency" in vulnerable.categories["security"].band_justification
 
 
 def test_mock_markers_in_test_files_do_not_trigger_stub_cap(repo_bundle):

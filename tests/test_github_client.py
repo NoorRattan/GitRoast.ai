@@ -1,3 +1,4 @@
+import base64
 import os
 
 import pytest
@@ -104,6 +105,45 @@ def test_parse_github_repo_url_rejects_untrusted_or_ambiguous_urls(repo_url):
 
 def test_parse_github_repo_url_canonicalizes_dot_git_suffix():
     assert parse_github_repo_url("https://github.com/example/repo.git") == ("example", "repo")
+
+
+@pytest.mark.asyncio
+async def test_repository_evidence_fetches_every_file_at_resolved_commit():
+    commit_sha = "resolved-commit-sha"
+    stub = StubAsyncClient(
+        [
+            StubResponse(
+                200,
+                {
+                    "tree": [
+                        {"path": "README.md", "type": "blob", "size": 20},
+                    ]
+                },
+            ),
+            StubResponse(
+                200,
+                {
+                    "encoding": "base64",
+                    "content": base64.b64encode(b"# Example\n").decode("ascii"),
+                    "size": 10,
+                },
+            ),
+        ]
+    )
+    client = GitHubGraphQLClient("token", stub)
+
+    evidence = await client.query_repository_evidence_for_revision(
+        {
+            "repo_url": "https://github.com/example/repo",
+            "owner": "example",
+            "name": "repo",
+            "default_branch": "main",
+            "commit_sha": commit_sha,
+        }
+    )
+
+    assert evidence["commit_sha"] == commit_sha
+    assert stub.get_calls[1][1]["params"] == {"ref": commit_sha}
 
 
 def test_parse_profile_response_keeps_oldest_default_branch_commit():

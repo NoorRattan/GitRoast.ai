@@ -53,7 +53,11 @@ def evaluate_project(problem_statement: str, evidence_bundle: dict[str, Any]) ->
     tree_files = list(evidence_bundle.get("tree_files") or [])
     static_signals = compute_static_signals(files, tree_files)
     project_type = detect_project_type(files, tree_files)
-    excluded = [] if project_type in UI_PROJECT_TYPES else ["accessibility"]
+    # Documentation and accessibility are currently one combined axis. Until
+    # they are modelled separately, exclude the actual category for projects
+    # where the accessibility half is not applicable rather than presenting a
+    # misleading exclusion that leaves the category in the composite.
+    excluded = [] if project_type in UI_PROJECT_TYPES else ["documentation_accessibility"]
     flags = ProjectEvaluationFlags(
         possible_stub_implementation=static_signals["possible_stub_implementation"],
         insufficient_evidence_gathered=len(files) < 5,
@@ -66,6 +70,11 @@ def evaluate_project(problem_statement: str, evidence_bundle: dict[str, Any]) ->
         "testing_reliability": score_testing(static_signals),
         "efficiency": score_efficiency(files, static_signals),
         "documentation_accessibility": score_docs_accessibility(project_type, files, static_signals),
+    }
+    categories = {
+        key: category
+        for key, category in categories.items()
+        if key not in excluded
     }
     categories = adversarial_self_check(categories, flags)
     overall = weighted_average(categories)
@@ -236,7 +245,7 @@ def score_security(
     score = 34
     band = "21-40: no committed secret was found, but the fetched evidence does not show a complete public-input security posture."
     if static_signals["known_vulnerable_dependency_findings"]:
-        score = 38
+        score = 28
         band = "21-40: known-vulnerable dependency ranges were detected in manifests."
     elif static_signals["uses_env_config"] and static_signals["input_validation_markers"] and static_signals["abuse_protection_markers"]:
         score = 74

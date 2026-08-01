@@ -245,7 +245,7 @@ class GitHubGraphQLClient:
         selected = select_evaluation_paths(entries)
         files = []
         for path in selected:
-            content = await self._request_rest(f"/repos/{owner}/{repo}/contents/{path}", params={"ref": default_branch})
+            content = await self._request_rest(f"/repos/{owner}/{repo}/contents/{path}", params={"ref": commit_sha})
             if content.get("encoding") != "base64" or not content.get("content"):
                 continue
             raw = base64.b64decode(str(content["content"]), validate=False)
