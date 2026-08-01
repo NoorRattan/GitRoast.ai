@@ -1,5 +1,6 @@
 export type Env = {
   BACKEND_BASE_URL: string;
+  GATEWAY_SHARED_SECRET: string;
 };
 
 export type CardData = {

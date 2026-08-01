@@ -12,17 +12,18 @@ export function getFallbackCard(): Uint8Array {
   return fallbackCardBytes;
 }
 
-export function imageHeaders(): HeadersInit {
+export function imageHeaders(state = "rendered"): HeadersInit {
   return {
     "content-type": PNG_CONTENT_TYPE,
-    "cache-control": CARD_CACHE_CONTROL
+    "cache-control": CARD_CACHE_CONTROL,
+    "x-gitroast-card-state": state
   };
 }
 
-export function fallbackResponse(): Response {
+export function fallbackResponse(state = "fallback"): Response {
   return new Response(getFallbackCard().slice(), {
     status: 200,
-    headers: imageHeaders()
+    headers: imageHeaders(state)
   });
 }
 

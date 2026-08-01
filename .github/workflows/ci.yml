@@ -89,6 +89,9 @@ jobs:
       - name: Deploy frontend Worker
         if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GATEWAY_SHARED_SECRET != ''
         run: npm run deploy
+      - name: Configure card Worker secret
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GATEWAY_SHARED_SECRET != ''
+        run: printf '%s' "$GATEWAY_SHARED_SECRET" | npx wrangler secret put GATEWAY_SHARED_SECRET --config workers/card/wrangler.toml --env preview
       - name: Install card Worker dependencies
         if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' && env.GATEWAY_SHARED_SECRET != ''
         run: npm ci

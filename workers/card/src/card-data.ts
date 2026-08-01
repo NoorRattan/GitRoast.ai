@@ -2,10 +2,19 @@ import type { CardData, Fetcher } from "./types";
 
 const CARD_DATA_TIMEOUT_MS = 1800;
 
-export async function fetchCardData(username: string, backendBaseUrl: string, fetcher: Fetcher = fetch): Promise<CardData> {
+export async function fetchCardData(
+  username: string,
+  backendBaseUrl: string,
+  gatewaySharedSecret: string,
+  fetcher: Fetcher = fetch
+): Promise<CardData> {
   const response = await fetcher(`${backendBaseUrl.replace(/\/$/, "")}/card-data/${encodeURIComponent(username)}`, {
     signal: AbortSignal.timeout(CARD_DATA_TIMEOUT_MS),
-    headers: { accept: "application/json" }
+    headers: {
+      accept: "application/json",
+      "x-gitroast-client-ip": "127.0.0.1",
+      "x-gitroast-gateway-secret": gatewaySharedSecret
+    }
   });
   if (!response.ok) {
     throw new Error(`card-data failed with status ${response.status}`);

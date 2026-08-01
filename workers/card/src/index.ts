@@ -16,19 +16,24 @@ export async function handleCardRequest(request: Request, env: Env, deps: Render
     return fallbackResponse();
   }
 
+  let stage = "card-data";
   try {
-    const cardData = await fetchCardData(username, env.BACKEND_BASE_URL);
+    const cardData = await fetchCardData(username, env.BACKEND_BASE_URL, env.GATEWAY_SHARED_SECRET);
+    stage = "avatar";
     const avatarDataUri = await avatarToDataUri(cardData.avatar_url);
+    stage = "svg";
     const svg = await (deps.renderSvg ?? renderSvg)(cardData, avatarDataUri);
+    stage = "raster";
     const png = await (deps.rasterizeSvg ?? rasterizeSvg)(svg);
     return new Response(png.slice(), {
       status: 200,
       headers: imageHeaders()
     });
-  } catch {
+  } catch (error) {
+    console.error("card render failed", { stage, error: error instanceof Error ? error.message : String(error) });
     return new Response((deps.fallbackCard ?? fallbackResponseBytes()).slice(), {
       status: 200,
-      headers: imageHeaders()
+      headers: imageHeaders(`fallback-${stage}`)
     });
   }
 }

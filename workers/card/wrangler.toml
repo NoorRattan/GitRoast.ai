@@ -7,7 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 enabled = true
 
 [vars]
-BACKEND_BASE_URL = "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1"
+BACKEND_BASE_URL = "https://gitroast-ai.onrender.com/api/v1"
 
 [[rules]]
 type = "Data"
@@ -24,4 +24,4 @@ name = "gitroast-card-preview"
 routes = []
 
 [env.preview.vars]
-BACKEND_BASE_URL = "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1"
+BACKEND_BASE_URL = "https://gitroast-ai.onrender.com/api/v1"

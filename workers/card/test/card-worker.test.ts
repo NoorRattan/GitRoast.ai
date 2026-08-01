@@ -8,7 +8,7 @@ import { handleCardRequest } from "../src/index";
 import { CARD_HEIGHT, CARD_WIDTH, cohortRankCopy, renderSvg } from "../src/render";
 import type { CardData } from "../src/types";
 
-const env = { BACKEND_BASE_URL: "https://api.gitroast.test/api/v1" };
+const env = { BACKEND_BASE_URL: "https://api.gitroast.test/api/v1", GATEWAY_SHARED_SECRET: "test-gateway-secret" };
 
 const cardData: CardData = {
   username: "octocat",
@@ -55,9 +55,17 @@ describe("card Worker pipeline", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/png");
     expect(response.headers.get("cache-control")).toBe(CARD_CACHE_CONTROL);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("rendered");
     expect(seen.username).toBe("octocat");
     expect(seen.avatar).toMatch(/^data:image\/png;base64,/);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      headers: {
+        accept: "application/json",
+        "x-gitroast-client-ip": "127.0.0.1",
+        "x-gitroast-gateway-secret": "test-gateway-secret"
+      }
+    });
   });
 
   it("card-data 404 returns static fallback, not a 500", async () => {
@@ -67,6 +75,7 @@ describe("card Worker pipeline", () => {
     const bytes = new Uint8Array(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("fallback-card-data");
     expect(bytes.length).toBe(getFallbackCard().length);
   });
 
@@ -79,6 +88,7 @@ describe("card Worker pipeline", () => {
     const bytes = new Uint8Array(await response.arrayBuffer());
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("fallback-card-data");
     expect(bytes.length).toBe(getFallbackCard().length);
   });
 
@@ -98,6 +108,7 @@ describe("card Worker pipeline", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("rendered");
     expect(seen.avatar).toBe(PLACEHOLDER_AVATAR_DATA_URI);
   });
 
@@ -119,6 +130,7 @@ describe("card Worker pipeline", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("fallback-svg");
     expect(new Uint8Array(await response.arrayBuffer()).length).toBe(getFallbackCard().length);
   });
 
@@ -133,6 +145,7 @@ describe("card Worker pipeline", () => {
     });
 
     expect(response.status).toBe(200);
+    expect(response.headers.get("x-gitroast-card-state")).toBe("fallback-raster");
     expect(new Uint8Array(await response.arrayBuffer()).length).toBe(getFallbackCard().length);
   });
 
