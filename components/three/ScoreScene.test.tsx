@@ -36,16 +36,10 @@ describe("ScoreScene", () => {
     expect(screen.queryByText("Rank")).not.toBeInTheDocument();
   });
 
-  it("keeps the 3D visual but freezes motion when reduced motion is requested", () => {
-    window.matchMedia = vi.fn().mockReturnValue({
-      matches: true,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn()
-    });
-
+  it("keeps motion active by default", () => {
     render(<MotionProvider><ScoreScene scores={scores} username="newstarter" schemaVersion={4} /></MotionProvider>);
 
-    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-motion", "static");
+    expect(screen.getByTestId("score-scene")).toHaveAttribute("data-motion", "animated");
     expect(screen.getByTestId("score-canvas")).toBeInTheDocument();
   });
 });
