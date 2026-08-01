@@ -23,7 +23,7 @@ Latest verified frontend Worker version: `8334444a-d5ea-4bb3-8a7f-9a56466126d4`.
 - Backend required env vars are `GITHUB_PAT`, `UPSTASH_URL`, `UPSTASH_TOKEN`, `NEON_DATABASE_URL`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `GATEWAY_SHARED_SECRET`, and `ALLOWED_ORIGINS`.
 - Optional centralized error reporting uses `SENTRY_DSN` on Render and `NEXT_PUBLIC_SENTRY_DSN` during the frontend build. Without them, backend exceptions still reach Render logs and frontend failures reach the error boundary and browser console.
 - `ALLOWED_ORIGINS` is scoped to the live Workers.dev frontend origin.
-- The card Worker preview uses the Cloudflare API gateway as its backend base URL.
+- The card Worker preview calls the protected Render card-data endpoint directly from the Worker, using its configured gateway secret and a server-to-server client identity. Browser traffic continues to use the Cloudflare API gateway.
 - Render runs `alembic upgrade head` before Uvicorn starts. Application startup does not mutate schema with `create_all`.
 - Main-branch CI deploys the gateway, frontend, card Worker, then Render in that order when the GitHub `production` environment contains `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GATEWAY_SHARED_SECRET`, and `RENDER_DEPLOY_HOOK`.
 - Set `GATEWAY_SHARED_SECRET` in Render before triggering its deploy hook. The backend intentionally fails fast if a required variable is absent.

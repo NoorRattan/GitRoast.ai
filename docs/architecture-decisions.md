@@ -18,4 +18,4 @@ The score field intentionally uses Three.js directly rather than React Three Fib
 
 ## Deployment Domains
 
-The public frontend and card worker intentionally use Cloudflare workers.dev origins. No custom domain is configured. The backend uses Render and deploys automatically from `main`; the two Cloudflare workers can deploy from the main-branch workflow when the production environment contains the required Cloudflare secrets.
+The public frontend and card worker intentionally use Cloudflare workers.dev origins. No custom domain is configured. Render automatic deploys are disabled; the main-branch CI workflow deploys the gateway, frontend, card Worker, then triggers the Render deploy hook when the production environment contains the required secrets.

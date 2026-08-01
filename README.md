@@ -32,7 +32,7 @@ GitRoast fetches real README, pinned-repository, language, commit, license, and 
 - Real credentials are never committed. Copy `.env.example`, supply your own values locally, and keep `.env` / `.dev.vars` untracked.
 - Production values belong only in Render and GitHub's protected `production` environment. Required deployment secrets are `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `GATEWAY_SHARED_SECRET`, and `RENDER_DEPLOY_HOOK`.
 - Before changing repository visibility, enable GitHub secret scanning, push protection, Dependabot alerts/security updates, and private vulnerability reporting in the repository security settings.
-- Browser and card-worker API traffic goes through the Cloudflare gateway. The Render origin accepts only `/health` publicly; protected routes require the gateway secret.
+- Browser API traffic goes through the Cloudflare gateway. The card Worker calls the protected Render card-data endpoint server-to-server with its configured gateway secret. The Render origin accepts only `/health` publicly; protected routes require that secret.
 - Before publishing a fork or deployment, rotate any credential that may have appeared in a terminal, chat, issue, commit, or build log.
 - Please report security concerns privately as described in [SECURITY.md](SECURITY.md). Do not include secrets in public issues.
 
