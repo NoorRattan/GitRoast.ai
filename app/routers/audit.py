@@ -28,6 +28,18 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1")
 
+ROAST_TONE_GUIDANCE = {
+    "mild": "Constructive and encouraging.",
+    "medium": "Direct, but focused on the work.",
+    "brutal": "Sharper criticism of the public signals, never the person.",
+    "hell": "Maximum theatrical heat aimed at the public work, never the person.",
+}
+AUDIT_SCOPE = "Public GitHub signals only; directional, not a code review."
+AUDIT_LIMITATIONS = [
+    "Only visible profile, repository, README, and sampled commit data are inspected.",
+    "Private work, code execution, issue quality, and off-GitHub collaboration are not measured.",
+]
+
 
 @router.post("/audit")
 async def post_audit(
@@ -234,6 +246,11 @@ def _audit_response(
         "findings": scores_entry["findings"],
         "percentile_sample_size": scores_entry.get("percentile_sample_size", 0),
         "percentile_cold_start": scores_entry.get("percentile_cold_start", True),
+        "report_context": {
+            "scope": AUDIT_SCOPE,
+            "limitations": AUDIT_LIMITATIONS,
+            "roast_tone": ROAST_TONE_GUIDANCE[applied],
+        },
         "roast_text": roast_entry["roast_text"],
         "strengths": roast_entry["strengths"],
         "improvement_areas": roast_entry["improvement_areas"],

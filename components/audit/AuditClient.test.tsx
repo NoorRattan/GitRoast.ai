@@ -35,6 +35,11 @@ function audit(overrides: Partial<AuditResult> = {}): AuditResult {
     findings: [{ metric: "fork_ratio", detail: "many forks", value: 0.5, contributesTo: "profileStrength" }],
     percentileSampleSize: 8,
     percentileColdStart: true,
+    reportContext: {
+      scope: "Public GitHub signals only; directional, not a code review.",
+      limitations: ["Public data only"],
+      roastTone: "Direct, but focused on the work."
+    },
     roastText: "Generated roast",
     strengths: ["Real work", "Clear motion", "Useful stack"],
     improvementAreas: ["Pin better repos", "Add tests", "Write READMEs"],
@@ -64,6 +69,8 @@ describe("AuditClient", () => {
     expect(screen.getByText(/capped at Medium/)).toBeInTheDocument();
     expect(screen.getByText("many forks")).toBeInTheDocument();
     expect(screen.getByText(/8 comparable profiles/)).toBeInTheDocument();
+    expect(screen.getByText(/Direct, but focused on the work/, { selector: ".audit-subtitle" })).toBeInTheDocument();
+    expect(screen.getByText(/Public GitHub signals only; directional, not a code review/, { selector: ".audit-subtitle" })).toBeInTheDocument();
   });
 
   it("refreshes an incomplete legacy cached audit even when its intensity matches", async () => {

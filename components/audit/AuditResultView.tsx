@@ -26,7 +26,7 @@ export function AuditResultView({ audit, visual }: AuditResultViewProps): JSX.El
         />
         {audit.findings.length > 0 && <FindingsList findings={audit.findings} />}
         <section className="roast-panel" aria-label="Roast verdict">
-          <div className="roast-label"><span className="section-kicker">The verdict</span><span>Local roast engine</span></div>
+          <div className="roast-label"><span className="section-kicker">The verdict</span><span>{audit.reportContext?.roastTone ?? "Local roast engine"}</span></div>
           <p className="roast-copy">{audit.roastText}</p>
         </section>
         <section className="fact-grid">

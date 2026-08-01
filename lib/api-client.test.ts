@@ -20,6 +20,11 @@ const auditPayload = {
   findings: [{ metric: "fork_ratio", detail: "many forks", value: 0.5, contributes_to: "profile_strength" }],
   percentile_sample_size: 12,
   percentile_cold_start: true,
+  report_context: {
+    scope: "Public GitHub signals only; directional, not a code review.",
+    limitations: ["Public data only"],
+    roast_tone: "Direct, but focused on the work."
+  },
   roast_text: "text",
   strengths: ["a", "b", "c"],
   improvement_areas: ["x", "y", "z"],
@@ -32,10 +37,11 @@ afterEach(() => {
 
 describe("api-client translation", () => {
   it("converts snake_case payloads to camelCase", () => {
-    const translated = snakeToCamel<{ schemaVersion: number; flags: { beginnerAccount: boolean } }>(auditPayload);
+    const translated = snakeToCamel<{ schemaVersion: number; flags: { beginnerAccount: boolean }; reportContext: { roastTone: string } }>(auditPayload);
 
     expect(translated.schemaVersion).toBe(3);
     expect(translated.flags.beginnerAccount).toBe(true);
+    expect(translated.reportContext.roastTone).toBe("Direct, but focused on the work.");
   });
 
   it("converts camelCase request bodies to snake_case", () => {

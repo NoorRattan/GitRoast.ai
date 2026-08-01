@@ -32,6 +32,11 @@ export type AuditResult = {
   findings: Finding[];
   percentileSampleSize: number;
   percentileColdStart: boolean;
+  reportContext?: {
+    scope: string;
+    limitations: string[];
+    roastTone: string;
+  };
   roastText: string;
   strengths: string[];
   improvementAreas: string[];

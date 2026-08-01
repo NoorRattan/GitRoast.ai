@@ -1,10 +1,10 @@
 import type { Scores } from "@/lib/api-client";
 
 const scoreLabels: Array<[Exclude<keyof Scores, "percentileBenchmark">, string, string]> = [
-  ["profileStrength", "Profile", "The visible surface"],
-  ["projectDepth", "Depth", "Proof of real work"],
-  ["commitConsistency", "Cadence", "Evidence of upkeep"],
-  ["techDiversity", "Stack", "Range without noise"]
+  ["profileStrength", "Profile", "README, pins, licenses and forks"],
+  ["projectDepth", "Depth", "Repo substance, CI and thin projects"],
+  ["commitConsistency", "Cadence", "Activity spread and commit clarity"],
+  ["techDiversity", "Stack", "Language mix and concentration"]
 ];
 
 export function ScoreGrid({ scores, percentileSampleSize, percentileColdStart }: { scores: Scores; percentileSampleSize: number; percentileColdStart: boolean }): JSX.Element {

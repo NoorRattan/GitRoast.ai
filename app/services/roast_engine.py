@@ -167,7 +167,6 @@ def _strengths(
 
 def _roadmap(dataset: dict[str, Any], findings: list[dict[str, Any]], rng: random.Random) -> list[dict[str, Any]]:
     selected = list(findings[:4])
-    rng.shuffle(selected)
     if not selected:
         selected = [
             {"metric": "repo_substance_score", "contributes_to": "project_depth"},

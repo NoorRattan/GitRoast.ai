@@ -14,6 +14,13 @@ const ScoreScene = dynamic(() => import("@/components/three/ScoreScene"), {
   loading: () => <section className="score-visual score-loading"><div className="loading-orbit" aria-hidden="true"><span /><span /><span /></div><span className="section-kicker">Loading signal topology</span></section>
 });
 
+const intensityGuidance: Record<RoastIntensity, string> = {
+  mild: "Constructive and encouraging",
+  medium: "Direct, focused on the work",
+  brutal: "Sharper criticism of public signals, never the person",
+  hell: "Maximum theatrical heat aimed at the work, never the person"
+};
+
 /** Client-side audit runner used only after the server cache-read path has rendered immediately. */
 export function AuditClient({ username, initialAudit }: { username: string; initialAudit: AuditResult | null }): JSX.Element {
   const [intensity, setIntensity] = useState<RoastIntensity>(initialAudit?.roastIntensityRequested ?? "medium");
@@ -46,6 +53,7 @@ export function AuditClient({ username, initialAudit }: { username: string; init
             <p className="audit-subtitle">
               {audit ? `Applied intensity: ${audit.roastIntensityApplied}` : "Preparing audit"}
               {query.isFetching && audit ? " · Updating roast" : " · Evidence-linked"}
+              {audit ? ` \u00b7 ${audit.reportContext?.roastTone ?? intensityGuidance[intensity]} \u00b7 ${audit.reportContext?.scope ?? "Public GitHub signals only; directional, not a code review."}` : null}
             </p>
           </div>
           <div className="audit-controls"><span className="control-label">Roast intensity</span><RoastIntensityTabs value={intensity} onChange={setIntensity} disabled={query.isFetching} /></div>

@@ -217,6 +217,14 @@ def test_beginner_downgrade_uses_medium_cache_and_skips_github(route_harness, lo
     assert body["roast_intensity_requested"] == "hell"
     assert body["roast_intensity_applied"] == "medium"
     assert body["intensity_downgraded"] is True
+    assert body["report_context"] == {
+        "scope": "Public GitHub signals only; directional, not a code review.",
+        "limitations": [
+            "Only visible profile, repository, README, and sampled commit data are inspected.",
+            "Private work, code execution, issue quality, and off-GitHub collaboration are not measured.",
+        ],
+        "roast_tone": "Direct, but focused on the work.",
+    }
     assert h["github"].calls == 0
 
 

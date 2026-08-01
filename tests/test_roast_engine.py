@@ -91,6 +91,13 @@ def test_roadmap_actions_trace_to_actual_finding_metrics():
             assert action_to_metric[action] in finding_metrics
 
 
+def test_roadmap_keeps_the_highest_priority_finding_first():
+    result = generate_roast(copy.deepcopy(FINDINGS), SCORES, "medium", rng=random.Random(9))
+
+    assert result["roadmap"][0]["focus"] == "project depth"
+    assert result["roadmap"][1]["focus"] == "commit consistency"
+
+
 def test_improvement_areas_are_action_oriented():
     dataset = load_line_bank()
     result = generate_roast(copy.deepcopy(FINDINGS), SCORES, "medium", rng=random.Random(11))
