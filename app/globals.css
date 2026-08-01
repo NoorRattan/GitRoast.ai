@@ -49,6 +49,18 @@
 
 * { box-sizing: border-box; }
 html { min-width: 320px; scroll-behavior: smooth; }
+
+/* Hide scrollbar on the right while preserving scroll functionality */
+html, body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 body {
   min-height: 100vh;
   margin: 0;

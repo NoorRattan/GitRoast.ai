@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, Github, Menu, Moon, Sun, X } from "lucide-react";
+import { ArrowUpRight, Github, Menu, Moon, Sparkles, Sun, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import gsap from "gsap";
 import Lenis from "lenis";
@@ -44,7 +44,6 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
       <div className="grain" aria-hidden="true" />
       <header className="site-header">
         <Link className="brand-lockup" href="/" aria-label="GitRoast.ai home">
-          <span className="brand-mark" aria-hidden="true"><span /></span>
           <span>GitRoast<span className="brand-dot">.</span>ai</span>
         </Link>
 
@@ -58,6 +57,7 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
 
         <div className="header-tools">
           <ThemeButton />
+          <MotionButton />
           <button
             className="menu-toggle"
             type="button"
@@ -92,6 +92,24 @@ export function SiteShell({ children }: { children: React.ReactNode }): JSX.Elem
         </span>
       </footer>
     </div>
+  );
+}
+
+function MotionButton(): JSX.Element {
+  const { motionEnabled, ready, toggleMotion } = useMotionPreference();
+  const label = !ready ? "Motion preference" : motionEnabled ? "Reduce motion" : "Enable motion";
+
+  return (
+    <button
+      className={`theme-button motion-button${motionEnabled ? " is-active" : ""}`}
+      type="button"
+      aria-label={label}
+      aria-pressed={motionEnabled}
+      title={label}
+      onClick={toggleMotion}
+    >
+      <Sparkles size={16} aria-hidden="true" />
+    </button>
   );
 }
 
