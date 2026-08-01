@@ -14,7 +14,7 @@
     "satori": "0.18.3"
   },
   "devDependencies": {
-    "@fontsource/inter": "5.2.8",
+    "@fontsource/inter": "5.3.0",
     "@types/node": "^24.10.1",
     "@types/react": "^18.3.27",
     "typescript": "^5.9.3",
