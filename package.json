@@ -18,7 +18,7 @@
     "bundle:check": "node scripts/check-bundle-size.mjs"
   },
   "dependencies": {
-    "@react-three/drei": "^9.122.0",
+    "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^8.18.0",
     "@react-three/postprocessing": "^2.19.1",
     "@sentry/browser": "^10.68.0",
