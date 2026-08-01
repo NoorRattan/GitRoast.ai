@@ -22,18 +22,18 @@ beforeEach(() => {
 });
 
 describe("MotionProvider", () => {
-  it("allows users to toggle motion preference", async () => {
+  it("defaults motion to ON and allows users to toggle motion preference", async () => {
     render(
       <MotionProvider>
         <Probe />
       </MotionProvider>
     );
 
-    const toggle = await screen.findByRole("button", { name: "Enable motion" });
+    const toggle = await screen.findByRole("button", { name: "Reduce motion" });
     fireEvent.click(toggle);
 
-    await waitFor(() => expect(screen.getByRole("button", { name: "Reduce motion" })).toBeInTheDocument());
-    expect(document.documentElement).toHaveAttribute("data-motion", "on");
-    expect(window.localStorage.getItem("motion-override")).toBe("on");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Enable motion" })).toBeInTheDocument());
+    expect(document.documentElement).toHaveAttribute("data-motion", "off");
+    expect(window.localStorage.getItem("motion-override")).toBe("off");
   });
 });
