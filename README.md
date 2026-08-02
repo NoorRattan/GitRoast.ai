@@ -4,6 +4,12 @@ Rule-based GitHub profile audits with deterministic scoring, local roast generat
 
 GitRoast fetches real README, pinned-repository, language, commit, license, and repository-structure signals from GitHub. Each score is paired with visible evidence, and the cohort rank is calculated from persisted audits with an explicit cold-start sample count.
 
+## See the evidence
+
+![A completed GitRoast profile audit for @torvalds crossfades into a completed project evaluation of GitRoast.ai.](docs/assets/gitroast-live-audit-demo.gif)
+
+Actual live results: a profile audit of [@torvalds](https://github.com/torvalds), then an evidence-linked evaluation of this repository. The animation shows the outputs users receive—not a mockup.
+
 > This repository is public for transparency and portfolio review. It is proprietary software; see [License](#license--permitted-use) before copying, reusing, distributing, or deploying any part of it.
 
 ## Links
