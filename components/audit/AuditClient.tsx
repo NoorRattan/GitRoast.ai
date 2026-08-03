@@ -98,12 +98,12 @@ function AuditLoadingScreen({ username }: { username: string }): JSX.Element {
       <div className="audit-loading-atmosphere" aria-hidden="true" />
       <div className="audit-loading-content">
         <p className="audit-loading-kicker"><span aria-hidden="true" /> Profile audit / live read</p>
-        <div className="audit-lens" aria-hidden="true">
-          <i className="audit-lens-ring audit-lens-ring-outer" />
-          <i className="audit-lens-ring audit-lens-ring-inner" />
-          <i className="audit-lens-ring audit-lens-ring-vertical" />
-          <i className="audit-lens-scan" />
-          <i className="audit-lens-core" />
+        <div className="audit-evidence-scan" aria-hidden="true">
+          <i className="audit-evidence-beam" />
+          <div className="audit-evidence-row"><span /><span /><span /><span /></div>
+          <div className="audit-evidence-row"><span /><span /><span /></div>
+          <div className="audit-evidence-row"><span /><span /><span /><span /></div>
+          <div className="audit-evidence-row"><span /><span /><span /></div>
         </div>
         <h2 className="audit-loading-username"><span>@</span>{username}</h2>
         <p className="audit-loading-subtitle">Preparing audit <b>·</b> Evidence-linked</p>
