@@ -85,14 +85,36 @@ export function AuditClient({ username, initialAudit }: { username: string; init
             />
           )}
         />
-      ) : (
-        <section className="empty-panel">
-          <p className="flush">
-            Audit is running. This page will update when the backend returns.
-          </p>
-        </section>
-      )}
+      ) : !errorMessage ? (
+        <AuditLoadingScreen username={username} />
+      ) : null}
     </div>
+  );
+}
+
+function AuditLoadingScreen({ username }: { username: string }): JSX.Element {
+  return (
+    <section className="audit-loading-screen" role="status" aria-live="polite" aria-label={`Preparing audit for ${username}`}>
+      <div className="audit-loading-atmosphere" aria-hidden="true" />
+      <div className="audit-loading-content">
+        <p className="audit-loading-kicker"><span aria-hidden="true" /> Profile audit / live read</p>
+        <div className="audit-lens" aria-hidden="true">
+          <i className="audit-lens-ring audit-lens-ring-outer" />
+          <i className="audit-lens-ring audit-lens-ring-inner" />
+          <i className="audit-lens-ring audit-lens-ring-vertical" />
+          <i className="audit-lens-scan" />
+          <i className="audit-lens-core" />
+        </div>
+        <h2 className="audit-loading-username"><span>@</span>{username}</h2>
+        <p className="audit-loading-subtitle">Preparing audit <b>·</b> Evidence-linked</p>
+        <p className="audit-loading-message">Reading public signals and assembling the report.</p>
+        <div className="audit-loading-proof" aria-label="Audit safeguards">
+          <span>Public GitHub data</span>
+          <span>Evidence retained</span>
+          <span>Report in progress</span>
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -58,7 +58,8 @@ describe("AuditClient", () => {
 
     renderWithQuery(<AuditClient username="newstarter" initialAudit={null} />);
 
-    expect(screen.getByText(/Audit is running/)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Preparing audit for newstarter" })).toBeInTheDocument();
+    expect(screen.getByText("Evidence retained")).toBeInTheDocument();
     await waitFor(() => expect(requestAudit).toHaveBeenCalledWith("newstarter", "medium"));
     await screen.findByText("Generated roast");
   });
@@ -71,6 +72,16 @@ describe("AuditClient", () => {
     expect(screen.getByText(/8 comparable profiles/)).toBeInTheDocument();
     expect(screen.getByText(/Direct, but focused on the work/, { selector: ".audit-subtitle" })).toBeInTheDocument();
     expect(screen.getByText(/Public GitHub signals only; directional, not a code review/, { selector: ".audit-subtitle" })).toBeInTheDocument();
+  });
+
+  it("replaces the loading screen with a retryable error when the audit request fails", async () => {
+    requestAudit.mockRejectedValue(new Error("offline"));
+
+    renderWithQuery(<AuditClient username="newstarter" initialAudit={null} />);
+
+    expect(screen.getByRole("status", { name: "Preparing audit for newstarter" })).toBeInTheDocument();
+    expect(await screen.findByRole("alert", {}, { timeout: 2500 })).toHaveTextContent("The audit could not be generated right now.");
+    expect(screen.queryByRole("status", { name: "Preparing audit for newstarter" })).not.toBeInTheDocument();
   });
 
   it("refreshes an incomplete legacy cached audit even when its intensity matches", async () => {
