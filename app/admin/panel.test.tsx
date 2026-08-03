@@ -49,7 +49,7 @@ describe("AdminPanel", () => {
   });
 
   it("submits the reviewer's own rejection reason", async () => {
-    fetchAdminReviews.mockResolvedValueOnce([
+    fetchAdminReviews.mockResolvedValue([
       {
         id: 9,
         auditId: 3,

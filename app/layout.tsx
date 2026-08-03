@@ -19,11 +19,15 @@ export const metadata: Metadata = {
   },
   description: "Rule-based GitHub profile audits with transparent scoring, local roasts, and shareable cards.",
   applicationName: "GitRoast.ai",
+  alternates: {
+    canonical: SITE_URL
+  },
   openGraph: {
     type: "website",
     siteName: "GitRoast.ai",
     title: "GitRoast.ai",
-    description: "Transparent GitHub profile scoring, a local roast, and a practical improvement roadmap."
+    description: "Transparent GitHub profile scoring, a local roast, and a practical improvement roadmap.",
+    url: SITE_URL
   }
 };
 
