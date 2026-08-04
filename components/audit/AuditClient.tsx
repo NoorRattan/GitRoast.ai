@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { AuditResult, RoastIntensity } from "@/lib/api-client";
 import { ApiError, requestAudit } from "@/lib/api-client";
 import { AuditResultView } from "./AuditResultView";
@@ -20,6 +20,13 @@ const intensityGuidance: Record<RoastIntensity, string> = {
   brutal: "Sharper criticism of public signals, never the person",
   hell: "Maximum theatrical heat aimed at the work, never the person"
 };
+
+const loadingSteps = [
+  "Checking the public profile",
+  "Reading repository signals",
+  "Linking supporting evidence",
+  "Preparing the report"
+];
 
 /** Client-side audit runner used only after the server cache-read path has rendered immediately. */
 export function AuditClient({ username, initialAudit }: { username: string; initialAudit: AuditResult | null }): JSX.Element {
@@ -93,6 +100,16 @@ export function AuditClient({ username, initialAudit }: { username: string; init
 }
 
 function AuditLoadingScreen({ username }: { username: string }): JSX.Element {
+  const [activeStep, setActiveStep] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveStep((step) => (step + 1) % loadingSteps.length);
+    }, 1800);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
   return (
     <section className="audit-loading-screen" role="status" aria-live="polite" aria-label={`Preparing audit for ${username}`}>
       <div className="audit-loading-atmosphere" aria-hidden="true" />
@@ -107,7 +124,15 @@ function AuditLoadingScreen({ username }: { username: string }): JSX.Element {
         </div>
         <h2 className="audit-loading-username"><span>@</span>{username}</h2>
         <p className="audit-loading-subtitle">Preparing audit <b>·</b> Evidence-linked</p>
-        <p className="audit-loading-message">Reading public signals and assembling the report.</p>
+        <p className="audit-loading-message">We are reading public signals and assembling an evidence-backed report.</p>
+        <ol className="audit-loading-steps" aria-label="Audit activity">
+          {loadingSteps.map((step, index) => (
+            <li className={index === activeStep ? "is-active" : ""} key={step}>
+              <span aria-hidden="true" />
+              {step}
+            </li>
+          ))}
+        </ol>
         <div className="audit-loading-proof" aria-label="Audit safeguards">
           <span>Public GitHub data</span>
           <span>Evidence retained</span>

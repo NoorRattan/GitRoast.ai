@@ -60,6 +60,10 @@ describe("AuditClient", () => {
 
     expect(screen.getByRole("status", { name: "Preparing audit for newstarter" })).toBeInTheDocument();
     expect(screen.getByText("Evidence retained")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Audit activity" })).toHaveTextContent("Checking the public profile");
+    expect(screen.getByRole("list", { name: "Audit activity" })).toHaveTextContent("Reading repository signals");
+    expect(screen.getByRole("list", { name: "Audit activity" })).toHaveTextContent("Linking supporting evidence");
+    expect(screen.getByRole("list", { name: "Audit activity" })).toHaveTextContent("Preparing the report");
     await waitFor(() => expect(requestAudit).toHaveBeenCalledWith("newstarter", "medium"));
     await screen.findByText("Generated roast");
   });
