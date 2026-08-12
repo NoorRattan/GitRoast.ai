@@ -16,6 +16,7 @@ const FORWARDED_HEADERS = [
 
 const CORS_HEADERS = "authorization, content-type";
 const CORS_METHODS = "GET, POST, DELETE, OPTIONS";
+const UPSTREAM_TIMEOUT_MS = 25_000;
 
 const worker = {
   async fetch(request: Request, env: GatewayEnv): Promise<Response> {
@@ -25,7 +26,12 @@ const worker = {
 
 export default worker;
 
-export async function handleGatewayRequest(request: Request, env: GatewayEnv, fetcher: typeof fetch = fetch): Promise<Response> {
+export async function handleGatewayRequest(
+  request: Request,
+  env: GatewayEnv,
+  fetcher: typeof fetch = fetch,
+  upstreamTimeoutMs = UPSTREAM_TIMEOUT_MS
+): Promise<Response> {
   const incomingUrl = new URL(request.url);
   const origin = request.headers.get("origin");
   if (request.method === "OPTIONS") {
@@ -51,13 +57,22 @@ export async function handleGatewayRequest(request: Request, env: GatewayEnv, fe
   headers.set("x-gitroast-client-ip", clientIp);
   headers.set("x-gitroast-gateway-secret", env.GATEWAY_SHARED_SECRET);
 
-  const upstream = await fetcher(upstreamUrl, {
-    method: request.method,
-    headers,
-    body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
-    redirect: "manual"
-  });
-  return withCors(upstream, origin, env.ALLOWED_ORIGIN);
+  const signal = AbortSignal.timeout(upstreamTimeoutMs);
+  try {
+    const upstream = await fetcher(upstreamUrl, {
+      method: request.method,
+      headers,
+      body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
+      redirect: "manual",
+      signal
+    });
+    return withCors(upstream, origin, env.ALLOWED_ORIGIN);
+  } catch {
+    if (signal.aborted) {
+      return errorResponse(504, "upstream_timeout", "The audit service did not respond in time.", origin, env.ALLOWED_ORIGIN);
+    }
+    return errorResponse(502, "upstream_unavailable", "The audit service is temporarily unavailable.", origin, env.ALLOWED_ORIGIN);
+  }
 }
 
 function preflightResponse(origin: string | null, allowedOrigin: string): Response {

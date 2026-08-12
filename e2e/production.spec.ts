@@ -1,11 +1,30 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { PNG } from "pngjs";
 
+async function assertGatewayHealthy(request: APIRequestContext, apiBaseUrl: string) {
+  let lastFailure = "no response";
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const health = await request.get(`${apiBaseUrl}/health`, { timeout: 25_000 });
+      if (health.ok()) {
+        expect(await health.json()).toMatchObject({ status: "ok" });
+        return;
+      }
+      lastFailure = `HTTP ${health.status()}`;
+    } catch (error) {
+      lastFailure = error instanceof Error ? error.message : String(error);
+    }
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 3_000));
+    }
+  }
+  throw new Error(`API gateway health check failed after 3 attempts: ${lastFailure}`);
+}
+
 test("live search, audit, intensity, evidence, score visual, and card seam", async ({ page, request }) => {
+  test.setTimeout(180_000);
   const apiBaseUrl = process.env.API_GATEWAY_BASE_URL ?? "https://gitroast-api-gateway-preview.jnoorrattan.workers.dev/api/v1";
-  const health = await request.get(`${apiBaseUrl}/health`);
-  expect(health.ok()).toBeTruthy();
-  expect(await health.json()).toMatchObject({ status: "ok" });
+  await assertGatewayHealthy(request, apiBaseUrl);
 
   await page.goto("/");
   await page.waitForLoadState("domcontentloaded");

@@ -58,4 +58,21 @@ describe("API gateway", () => {
     expect(response.status).toBe(204);
     expect(response.headers.get("access-control-allow-methods")).toContain("POST");
   });
+
+  it("returns a bounded gateway error when the upstream request stalls", async () => {
+    const stalledFetcher = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+    }));
+    const response = await handleGatewayRequest(
+      new Request("https://gateway.example/api/v1/health", {
+        headers: { "cf-connecting-ip": "203.0.113.9" }
+      }),
+      env,
+      stalledFetcher as typeof fetch,
+      1
+    );
+
+    expect(response.status).toBe(504);
+    await expect(response.json()).resolves.toMatchObject({ error: { code: "upstream_timeout" } });
+  });
 });
