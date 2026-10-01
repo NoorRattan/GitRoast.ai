@@ -19,6 +19,6 @@
     "@types/react": "^18.3.27",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14",
-    "wrangler": "^4.55.0"
+    "wrangler": "^4.145.0"
   }
 }
