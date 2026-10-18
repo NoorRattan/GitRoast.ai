@@ -22,6 +22,10 @@ def async_database_engine_options(database_url: str) -> tuple[str, dict[str, obj
     url = make_url(database_url)
     connect_args: dict[str, object] = {}
 
+    # Preserve SQLite's special :memory: database and other drivers' URL syntax.
+    if url.drivername != "postgresql":
+        return database_url, connect_args
+
     if url.drivername == "postgresql":
         query = dict(url.query)
         sslmode = query.pop("sslmode", None)
